@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Worlds</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://js.puter.com/v2/"></script>
+<style>
+  :root{
+    --bg:#0D0F13; --bg-elev:#161922; --panel:rgba(10,12,16,0.62); --panel-solid:#181B22;
+    --text:#F2F1ED; --text-dim:#9A9FAC; --line:rgba(255,255,255,0.09);
+    --amber:#FFFFFF; --amber-deep:#CCCCCC; --violet:#7C5CFC; --rose:#E0637A;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;}
+  body{background:var(--bg); font-family:'Inter',sans-serif; color:var(--text); display:flex; justify-content:center; min-height:100vh;}
+  #app{width:100%; max-width:480px; min-height:100vh; display:flex; flex-direction:column; position:relative; background:var(--bg);}
+
+  /* ---------- library topbar ---------- */
+  #topbar{padding:16px 16px 10px; border-bottom:1px solid var(--line);}
+  #topbar .row1{display:flex; align-items:center; gap:10px;}
+  #searchBox{flex:1; display:flex; align-items:center; gap:8px; background:var(--bg-elev); border:1px solid var(--line); border-radius:14px; padding:10px 13px;}
+  #searchBox svg{flex-shrink:0; opacity:.55;}
+  #searchInput{border:none; background:none; outline:none; color:var(--text); font-family:inherit; font-size:14px; width:100%;}
+  #searchInput::placeholder{color:var(--text-dim);}
+  #tagRow{display:flex; gap:8px; margin-top:12px; overflow-x:auto; padding-bottom:2px; scrollbar-width:none;}
+  #tagRow::-webkit-scrollbar{display:none;}
+  .tag-chip{flex-shrink:0; padding:7px 14px; border-radius:20px; font-size:12.5px; font-weight:600; background:var(--bg-elev); color:var(--text-dim); border:1px solid var(--line); cursor:pointer; white-space:nowrap;}
+  .tag-chip.active{background:var(--amber); color:#1A1204; border-color:var(--amber);}
+
+  #library{flex:1; padding:16px 14px 90px; overflow-y:auto;}
+  #libEmpty{padding:70px 20px; text-align:center; color:var(--text-dim);}
+  #libEmpty .display{font-family:'Fraunces',serif; font-size:18px; color:var(--text); margin-bottom:6px; font-weight:600;}
+  #libGrid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .world-card{background:var(--panel-solid); border-radius:14px; overflow:hidden; cursor:pointer; border:1px solid var(--line); display:flex; flex-direction:column;}
+  .cover-wrap{position:relative; aspect-ratio:3/4; background:linear-gradient(160deg,#22262f,#14161b);}
+  .cover-wrap img{width:100%;height:100%;object-fit:cover; display:block;}
+  .cover-wrap.placeholder{display:flex;align-items:center;justify-content:center; font-family:'Fraunces',serif; font-size:34px; color:var(--text-dim);}
+  .cover-fade{position:absolute; left:0; right:0; bottom:0; height:60%; background:linear-gradient(to top, rgba(0,0,0,0.88), transparent); pointer-events:none;}
+  .msg-count{position:absolute; left:9px; bottom:9px; display:flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:#E8E6DF;}
+  .msg-count svg{opacity:.85;}
+  .card-info{padding:10px 11px 12px;}
+  .card-name{font-family:'Fraunces',serif; font-weight:600; font-size:14.5px; color:var(--text); line-height:1.25; margin-bottom:3px;}
+  .card-tag{font-size:11.5px; color:var(--text-dim); line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin-bottom:8px;}
+  .card-chips{display:flex; gap:5px; flex-wrap:wrap;}
+  .mini-chip{font-size:10px; font-weight:600; color:var(--text-dim); background:rgba(255,255,255,0.06); padding:3px 8px; border-radius:8px;}
+
+  #newCardBtn{display:none;}
+
+  /* ---------- bottom nav ---------- */
+  #bottomNav{position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:480px; display:flex; align-items:center; justify-content:space-around; background:var(--panel-solid); border-top:1px solid var(--line); padding:8px 6px calc(8px + env(safe-area-inset-bottom)); z-index:15;}
+  .nav-item{background:none; border:none; display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--text-dim); font-size:10px; font-weight:600; cursor:pointer; padding:4px 8px; flex:1;}
+  .nav-item svg{opacity:.75;}
+  .nav-item.active{color:var(--amber);}
+  .nav-item.active svg{opacity:1;}
+  .nav-item.plus{margin-top:-26px;}
+  .nav-item.plus .plus-circle{width:50px;height:50px;border-radius:50%; background:var(--amber); display:flex; align-items:center; justify-content:center; margin-bottom:2px;}
+  .nav-item.plus.active{color:var(--text-dim);}
+  body{padding-bottom:0;}
+  #library, #messagesScreen, #settingsScreen{padding-bottom:96px !important;}
+
+  /* ---------- editor ---------- */
+  #editor{flex:1; padding:18px 16px 100px; overflow-y:auto; display:none;}
+  #editor .backRow{display:flex; align-items:center; gap:10px; margin-bottom:16px;}
+  #editor .backRow button{background:none; border:1px solid var(--line); color:var(--text); font-size:12px; padding:7px 12px; border-radius:20px; cursor:pointer;}
+  #editor .backRow h2{margin:0; font-family:'Fraunces',serif; font-size:17px; font-weight:600;}
+  .panel{background:var(--panel-solid); border:1px solid var(--line); border-radius:16px; padding:18px 16px 20px;}
+  .field{margin-bottom:16px;}
+  .field label{display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-dim); margin-bottom:7px;}
+  .field input[type=text], .field textarea{width:100%; border:1px solid var(--line); border-radius:10px; background:var(--bg-elev); font-family:'Inter',sans-serif; font-size:14.5px; color:var(--text); padding:10px 12px; resize:vertical;}
+  .field textarea{min-height:80px; line-height:1.5;}
+  .field input:focus, .field textarea:focus{outline:none; border-color:var(--amber);}
+  .field .hint{font-size:11px; color:var(--text-dim); margin-top:5px; line-height:1.4;}
+  #avatarRow{display:flex; align-items:center; gap:14px; margin-bottom:18px;}
+  #avatarPreview{width:76px;height:96px;border-radius:10px; object-fit:cover; background:var(--bg-elev); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; color:var(--text-dim); font-size:26px; font-family:'Fraunces',serif; flex-shrink:0; overflow:hidden;}
+  #avatarBtn{background:none; border:1px solid var(--line); color:var(--text); border-radius:20px; padding:9px 16px; font-size:12.5px; cursor:pointer;}
+  #saveCardBtn{width:100%; margin-top:6px; background:var(--amber); color:#1A1204; border:none; border-radius:12px; padding:14px; font-family:'Inter',sans-serif; font-weight:700; font-size:15px; cursor:pointer;}
+  #deleteCardBtn{width:100%; margin-top:10px; background:none; color:var(--rose); border:1px solid rgba(224,99,122,0.4); border-radius:12px; padding:12px; font-size:13px; cursor:pointer;}
+
+  /* ---------- chat ---------- */
+  #chatScreen{flex:1; display:none; flex-direction:column; position:relative; min-height:100vh;}
+  #chatBg{position:fixed; inset:0; max-width:480px; margin:0 auto; background-size:cover; background-position:center; z-index:0;}
+  #chatBg::after{content:''; position:absolute; inset:0; background:linear-gradient(to bottom, rgba(9,10,13,0.55) 0%, rgba(9,10,13,0.35) 30%, rgba(9,10,13,0.82) 78%, #0D0F13 100%);}
+  #chatHeader{display:flex; align-items:center; gap:10px; padding:14px 14px; position:relative; z-index:2;}
+  #chatHeader button.iconbtn{background:rgba(20,22,28,0.6); border:1px solid var(--line); color:var(--text); width:34px;height:34px; border-radius:10px; cursor:pointer; display:flex;align-items:center;justify-content:center; flex-shrink:0;}
+  #chatTitleWrap{display:flex; align-items:center; gap:7px; background:rgba(20,22,28,0.6); border:1px solid var(--line); border-radius:20px; padding:6px 12px 6px 6px; cursor:pointer; min-width:0;}
+  #chatAvatar{width:26px;height:26px;border-radius:50%; object-fit:cover; background:var(--bg-elev); flex-shrink:0;}
+  #chatAvatar.placeholder{display:flex;align-items:center;justify-content:center; font-family:'Fraunces',serif; color:var(--text-dim); font-size:12px;}
+  #chatName{font-size:13.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:130px;}
+  #exportBtn{margin-left:auto; background:rgba(20,22,28,0.6); border:1px solid var(--line); color:var(--text); font-size:14px; font-weight:700; padding:7px 10px; border-radius:20px; cursor:pointer;}
+  #memoryBtn{background:rgba(20,22,28,0.6); border:1px solid var(--line); color:var(--amber); font-size:11.5px; font-weight:700; padding:7px 12px; border-radius:20px; cursor:pointer; margin-left:8px;}
+
+  #log{flex:1; overflow-y:auto; padding:6px 14px 8px; display:flex; flex-direction:column; gap:10px; position:relative; z-index:2;}
+  .msg{max-width:92%;}
+  .msg.user{align-self:flex-end; max-width:80%;}
+  .bubble{padding:13px 15px; border-radius:14px; font-size:14.5px; line-height:1.62;}
+  .msg.ai .bubble{background:var(--panel); backdrop-filter:blur(6px); color:#F0EFEA; border:1px solid rgba(255,255,255,0.06); border-bottom-left-radius:4px;}
+  .msg.user .bubble{background:var(--amber); color:#1A1204; font-weight:500; border-bottom-right-radius:4px;}
+  .msg-actions{display:flex; gap:14px; padding:6px 6px 0; align-items:center;}
+  .msg-actions button{background:none; border:none; color:var(--text-dim); cursor:pointer; padding:4px; display:flex; align-items:center;}
+  .msg-actions button:active{color:var(--amber);}
+
+  #suggestRow{display:flex; gap:8px; overflow-x:auto; padding:2px 14px 0; position:relative; z-index:2; scrollbar-width:none;}
+  #suggestRow::-webkit-scrollbar{display:none;}
+  .suggest-chip{flex-shrink:0; background:rgba(20,22,28,0.65); border:1px solid var(--line); color:var(--text); font-size:12.5px; padding:9px 14px; border-radius:16px; cursor:pointer; white-space:nowrap; max-width:260px; overflow:hidden; text-overflow:ellipsis;}
+
+  #inputRow{display:flex; gap:8px; align-items:center; padding:12px 14px calc(14px + env(safe-area-inset-bottom)); position:relative; z-index:2;}
+  #ideaBtn{background:rgba(20,22,28,0.6); border:1px solid var(--line); color:var(--amber); width:40px;height:40px; border-radius:50%; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:16px;}
+  #textInput{flex:1; border:1px solid var(--line); border-radius:22px; padding:11px 16px; font-family:'Inter',sans-serif; font-size:14.5px; background:rgba(20,22,28,0.72); color:var(--text);}
+  #textInput::placeholder{color:var(--text-dim);}
+  #sendBtn{background:var(--amber); color:#1A1204; border:none; border-radius:50%; width:40px;height:40px; font-weight:700; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center;}
+  #sendBtn:disabled{opacity:.5;}
+
+  .typing .bubble{display:flex; gap:4px; padding:14px 16px;}
+  .typing span{width:6px;height:6px;border-radius:50%;background:var(--text-dim);opacity:.4;animation:blink 1.1s infinite;}
+  .typing span:nth-child(2){animation-delay:.18s;} .typing span:nth-child(3){animation-delay:.36s;}
+  @keyframes blink{0%,80%,100%{opacity:.25;transform:translateY(0);}40%{opacity:.9;transform:translateY(-2px);}}
+
+  .warn{font-size:12px; color:var(--rose); text-align:center; padding:8px 20px; line-height:1.5; position:relative; z-index:2;}
+  #fileInput{display:none;}
+
+  /* ---------- memory modal ---------- */
+  #memoryModal{position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:flex-end; justify-content:center; z-index:20;}
+  #memoryModal .sheet{width:100%; max-width:480px; background:var(--panel-solid); border-radius:18px 18px 0 0; padding:20px 18px calc(24px + env(safe-area-inset-bottom)); max-height:70vh; overflow-y:auto;}
+  #memoryModal h3{margin:0 0 4px; font-family:'Fraunces',serif; font-size:16px;}
+  #memoryModal p.sub{margin:0 0 14px; font-size:12px; color:var(--text-dim);}
+  #memoryContent{font-size:13.5px; line-height:1.65; color:var(--text); white-space:pre-wrap;}
+  #memoryModal button{margin-top:16px; width:100%; background:var(--bg-elev); border:1px solid var(--line); color:var(--text); border-radius:12px; padding:12px; font-size:13.5px; cursor:pointer;}
+
+  /* ---------- messages ---------- */
+  #messagesScreen{flex:1; padding:16px 14px 90px; overflow-y:auto; display:none;}
+  #messagesScreen h2{font-family:'Fraunces',serif; font-size:20px; margin:2px 0 16px; font-weight:600;}
+  #msgEmpty{padding:70px 20px; text-align:center; color:var(--text-dim);}
+  .conv-row{display:flex; align-items:center; gap:12px; padding:11px 8px; border-radius:12px; cursor:pointer;}
+  .conv-row:active{background:var(--bg-elev);}
+  .conv-avatar{width:48px;height:48px;border-radius:12px; object-fit:cover; background:var(--bg-elev); flex-shrink:0;}
+  .conv-avatar.placeholder{display:flex;align-items:center;justify-content:center; font-family:'Fraunces',serif; color:var(--text-dim); font-size:19px;}
+  .conv-info{min-width:0; flex:1;}
+  .conv-name{font-weight:700; font-size:14.5px; margin-bottom:2px;}
+  .conv-preview{font-size:12.5px; color:var(--text-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+
+  /* ---------- settings ---------- */
+  #settingsScreen{flex:1; padding:16px 14px 90px; overflow-y:auto; display:none;}
+  #settingsScreen h2{font-family:'Fraunces',serif; font-size:20px; margin:2px 0 16px; font-weight:600;}
+  .settings-card{background:var(--panel-solid); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px;}
+  .settings-card .label{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-dim); margin-bottom:4px; font-weight:700;}
+  .settings-card .value{font-size:14.5px; font-weight:600;}
+  .settings-btn{width:100%; background:var(--bg-elev); border:1px solid var(--line); color:var(--text); border-radius:12px; padding:13px; font-size:13.5px; font-weight:600; cursor:pointer; margin-top:8px;}
+  .settings-btn.danger{color:var(--rose); border-color:rgba(224,99,122,0.4);}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="topbar">
+    <div class="row1">
+      <div id="searchBox">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="searchInput" placeholder="Search your worlds">
+      </div>
+    </div>
+    <div id="tagRow" style="display:none"></div>
+  </div>
+
+  <div id="library">
+    <div id="libEmpty" class="screen-hidden">
+      <div class="display">No worlds yet</div>
+      <div>Build your first one below.</div>
+    </div>
+    <div id="libGrid"></div>
+  </div>
+  <button id="newCardBtn">+ Build a world</button>
+
+  <div id="messagesScreen">
+    <h2>Messages</h2>
+    <div id="msgEmpty" class="screen-hidden"><div>No conversations yet — start a world to begin one.</div></div>
+    <div id="msgList"></div>
+  </div>
+
+  <div id="settingsScreen">
+    <h2>Settings</h2>
+    <div class="settings-card">
+      <div class="label">Signed in as</div>
+      <div class="value" id="settingsUser">—</div>
+      <button class="settings-btn" id="signOutBtn">Sign out of Puter</button>
+    </div>
+    <div class="settings-card">
+      <div class="label">Backup a story</div>
+      <div class="value" style="font-weight:400; font-size:13px; color:var(--text-dim); line-height:1.5; margin-bottom:10px;">Download any world's full conversation and memory as a file from its chat screen (⬇️ button). Bring it back in below — the story continues exactly where it left off.</div>
+      <button class="settings-btn" id="importWorldBtn">Upload a world file</button>
+      <input type="file" id="importFileInput" accept="application/json" style="display:none">
+    </div>
+    <div class="settings-card">
+      <div class="label">About</div>
+      <div class="value" style="font-weight:400; font-size:13px; color:var(--text-dim); line-height:1.5;">Worlds runs on free AI and cloud storage via Puter — no account fees, no API keys. Your worlds and conversations are saved to your Puter account.</div>
+    </div>
+    <div class="settings-card">
+      <div class="label">Danger zone</div>
+      <button class="settings-btn danger" id="eraseAllBtn">Erase all worlds &amp; conversations</button>
+    </div>
+  </div>
+
+  <div id="bottomNav">
+    <button class="nav-item" data-tab="library">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+      Home
+    </button>
+    <button class="nav-item" data-tab="messages">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-4.7 7.6 8.5 8.5 0 0 1-3.8.9 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+      Messages
+    </button>
+    <button class="nav-item plus" data-tab="new">
+      <div class="plus-circle"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1A1204" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></div>
+    </button>
+    <button class="nav-item" data-tab="settings">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Settings
+    </button>
+  </div>
+
+  <div id="editor">
+    <div class="backRow">
+      <button id="editorBackBtn">Back</button>
+      <h2 id="editorTitle">New world</h2>
+    </div>
+    <div class="panel">
+      <div id="avatarRow">
+        <div id="avatarPreview">葉</div>
+        <button id="avatarBtn">Upload cover image</button>
+        <input type="file" id="fileInput" accept="image/*">
+      </div>
+      <div class="field"><label>World name</label><input type="text" id="fName" placeholder="e.g. Leaf Academy, Marvel Universe"></div>
+      <div class="field"><label>Tagline</label><input type="text" id="fTagline" placeholder="One line — shown in the catalogue"></div>
+      <div class="field"><label>Tags</label><input type="text" id="fTags" placeholder="Adventure, Mystery, Sci-fi (comma-separated)"></div>
+      <div class="field">
+        <label>Setting &amp; characters</label>
+        <textarea id="fLore" placeholder="Describe the world: where/when it is, the tone, the key characters and how they act and speak, and who the player is in it."></textarea>
+        <div class="hint">This is the AI's script for everything — it narrates the world and voices every character from it.</div>
+      </div>
+      <div class="field"><label>Opening scene</label><textarea id="fOpening" placeholder="How the story begins — set the scene in 2nd person and end on a moment the player can react to."></textarea></div>
+      <button id="saveCardBtn">Save world</button>
+      <button id="deleteCardBtn" class="screen-hidden">Delete this world</button>
+    </div>
+  </div>
+
+  <div id="chatScreen">
+    <div id="chatBg"></div>
+    <div id="chatHeader">
+      <button class="iconbtn" id="chatBackBtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m15 18-6-6 6-6"/></svg></button>
+      <div id="chatTitleWrap">
+        <div id="chatAvatar" class="placeholder">葉</div>
+        <span id="chatName">—</span>
+      </div>
+      <button id="exportBtn" title="Download this world's story">⬇️</button>
+      <button id="memoryBtn">🧠 Memory</button>
+    </div>
+    <div id="log"></div>
+    <div id="suggestRow"></div>
+    <div id="inputRow">
+      <button id="ideaBtn" title="Suggest next actions">💡</button>
+      <input id="textInput" placeholder="Say or do something...">
+      <button id="sendBtn">➤</button>
+    </div>
+  </div>
+
+</div>
+
+<div id="memoryModal">
+  <div class="sheet">
+    <h3>Story memory</h3>
+    <p class="sub">What the AI currently remembers about your story so far</p>
+    <div id="memoryContent">Nothing remembered yet — memory builds up as you play.</div>
+    <button id="closeMemoryBtn">Close</button>
+  </div>
+</div>
+
+<script>
+// ================= storage (Puter KV — free, cloud, tied to the user's Puter account) =================
+const INDEX_KEY = 'wc_index_v2';
+
+// Only prompts sign-in when a save/write actually happens — reads stay silent if signed out.
+async function ensurePuterSignedIn(){
+  try{
+    const signedIn = await puter.auth.isSignedIn();
+    if(!signedIn){ await puter.auth.signIn(); }
+    return true;
+  }catch(e){ return false; }
+}
+
+async function kvGet(key){
+  try{
+    const signedIn = await puter.auth.isSignedIn();
+    if(!signedIn) return null;
+    const v = await puter.kv.get(key);
+    return v ? JSON.parse(v) : null;
+  }catch(e){ return null; }
+}
+async function kvSet(key, val){
+  try{
+    const ok = await ensurePuterSignedIn();
+    if(!ok) return;
+    await puter.kv.set(key, JSON.stringify(val));
+  }catch(e){ console.error('save failed', e); }
+}
+async function kvDel(key){
+  try{
+    const signedIn = await puter.auth.isSignedIn();
+    if(!signedIn) return;
+    await puter.kv.del(key);
+  }catch(e){}
+}
+
+async function getIndex(){ return (await kvGet(INDEX_KEY)) || []; }
+async function saveIndex(list){ await kvSet(INDEX_KEY, list); }
+async function getWorld(id){ return await kvGet('wc_world_'+id); }
+async function saveWorld(w){ await kvSet('wc_world_'+w.id, w); }
+async function deleteWorldData(id){ await kvDel('wc_world_'+id); await kvDel('wc_chat_'+id); await kvDel('wc_mem_'+id); }
+async function getChat(id){ return (await kvGet('wc_chat_'+id)) || []; }
+async function saveChat(id, msgs){ await kvSet('wc_chat_'+id, msgs); }
+async function getMemory(id){ return (await kvGet('wc_mem_'+id)) || ''; }
+async function saveMemory(id, mem){ await kvSet('wc_mem_'+id, mem); }
+
+// ================= AI =================
+function withTimeout(promise, ms, msg){ return Promise.race([promise, new Promise((_,rej)=>setTimeout(()=>rej(new Error(msg)), ms))]); }
+
+async function askAI(systemPrompt, userPrompt){
+  const response = await withTimeout(
+    puter.ai.chat([{role:'system', content:systemPrompt},{role:'user', content:userPrompt}], {model:'claude-sonnet-5'}),
+    45000, 'That took too long and timed out. Check your connection and try again.'
+  );
+  const text = response?.message?.content?.find(c=>c.type==='text')?.text ?? (typeof response === 'string' ? response : null);
+  if(!text) throw new Error('No reply came back. Try again.');
+  return text.trim();
+}
+
+async function updateMemory(world){
+  const chat = await getChat(world.id);
+  const recent = chat.slice(-14);
+  if(recent.length < 6) return;
+  const convo = recent.map(m => `${m.role==='user'?'Player':'Story'}: ${m.text}`).join('\n');
+  const prevMem = await getMemory(world.id);
+  const prompt = `Summarize in 3-5 short factual bullet points what has happened so far in this story and what the world/characters now know about the player. Concise, no preamble, bullets only.\n\n${convo}\n\nPrevious memory: ${prevMem || '(none yet)'}`;
+  try{
+    const summary = await askAI('You maintain a concise ongoing-story memory log. Output only the updated bullet list, nothing else.', prompt);
+    await saveMemory(world.id, summary);
+  }catch(e){ /* non-fatal */ }
+}
+
+// ================= image handling =================
+function resizeImageToDataUrl(file, maxSize=640, quality=0.8){
+  return new Promise((resolve, reject)=>{
+    const img = new Image(); const reader = new FileReader();
+    reader.onload = e => { img.onload = ()=>{
+      let {width, height} = img;
+      if(width > height){ if(width > maxSize){ height *= maxSize/width; width = maxSize; } }
+      else { if(height > maxSize){ width *= maxSize/height; height = maxSize; } }
+      const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    }; img.onerror = reject; img.src = e.target.result; };
+    reader.onerror = reject; reader.readAsDataURL(file);
+  });
+}
+
+// ================= state / navigation =================
+let state = { editingId:null, chattingId:null, pendingCover:null, activeTag:null };
+const els = {};
+['library','libGrid','libEmpty','newCardBtn','editor','editorBackBtn','editorTitle','chatScreen','chatBackBtn',
+ 'avatarPreview','avatarBtn','fileInput','fName','fTagline','fTags','fLore','fOpening','saveCardBtn','deleteCardBtn',
+ 'chatAvatar','chatName','chatBg','memoryBtn','exportBtn','log','suggestRow','textInput','sendBtn','ideaBtn',
+ 'searchInput','tagRow','memoryModal','memoryContent','closeMemoryBtn','importWorldBtn','importFileInput'
+].forEach(id => els[id] = document.getElementById(id));
+
+function show(el){ el.style.display=''; } function hide(el){ el.style.display='none'; }
+
+function showLibrary(){ setActiveTab('library'); els.library.style.display='block'; document.getElementById('topbar').style.display='block';
+  els.editor.style.display='none'; els.chatScreen.style.display='none';
+  document.getElementById('messagesScreen').style.display='none'; document.getElementById('settingsScreen').style.display='none';
+  document.getElementById('bottomNav').style.display='flex'; }
+function showEditor(){ els.library.style.display='none'; document.getElementById('topbar').style.display='none';
+  els.editor.style.display='block'; els.chatScreen.style.display='none';
+  document.getElementById('messagesScreen').style.display='none'; document.getElementById('settingsScreen').style.display='none';
+  document.getElementById('bottomNav').style.display='none'; }
+function showChat(){ els.library.style.display='none'; document.getElementById('topbar').style.display='none';
+  els.editor.style.display='none'; els.chatScreen.style.display='flex';
+  document.getElementById('messagesScreen').style.display='none'; document.getElementById('settingsScreen').style.display='none';
+  document.getElementById('bottomNav').style.display='none'; }
+function showMessages(){ setActiveTab('messages'); els.library.style.display='none'; document.getElementById('topbar').style.display='none';
+  els.editor.style.display='none'; els.chatScreen.style.display='none';
+  document.getElementById('messagesScreen').style.display='block'; document.getElementById('settingsScreen').style.display='none';
+  document.getElementById('bottomNav').style.display='flex'; renderMessages(); }
+function showSettings(){ setActiveTab('settings'); els.library.style.display='none'; document.getElementById('topbar').style.display='none';
+  els.editor.style.display='none'; els.chatScreen.style.display='none';
+  document.getElementById('messagesScreen').style.display='none'; document.getElementById('settingsScreen').style.display='block';
+  document.getElementById('bottomNav').style.display='flex'; renderSettings(); }
+
+function setActiveTab(tab){
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+}
+document.querySelectorAll('.nav-item').forEach(btn=>{
+  btn.onclick = ()=>{
+    const tab = btn.dataset.tab;
+    if(tab==='library'){ renderLibrary(); showLibrary(); }
+    else if(tab==='messages'){ showMessages(); }
+    else if(tab==='settings'){ showSettings(); }
+    else if(tab==='new'){ openEditor(null); }
+  };
+});
+
+async function renderMessages(){
+  const index = await getIndex();
+  const rows = [];
+  for(const w of index){
+    const chat = await getChat(w.id);
+    if(chat.length>0) rows.push({world:w, chat});
+  }
+  rows.sort((a,b)=> (b.chat[b.chat.length-1]?.ts||0) - (a.chat[a.chat.length-1]?.ts||0));
+  const list = document.getElementById('msgList');
+  list.innerHTML = '';
+  document.getElementById('msgEmpty').classList.toggle('screen-hidden', rows.length>0);
+  rows.forEach(({world, chat})=>{
+    const last = chat[chat.length-1];
+    const row = document.createElement('div'); row.className = 'conv-row';
+    row.innerHTML = `
+      ${world.cover ? `<img class="conv-avatar" src="${world.cover}">` : `<div class="conv-avatar placeholder">${world.name.charAt(0)}</div>`}
+      <div class="conv-info">
+        <div class="conv-name">${escapeHtml(world.name)}</div>
+        <div class="conv-preview">${escapeHtml((last.role==='user'?'You: ':'') + last.text)}</div>
+      </div>`;
+    row.onclick = ()=> openStory(world.id);
+    list.appendChild(row);
+  });
+}
+
+async function renderSettings(){
+  const userEl = document.getElementById('settingsUser');
+  try{
+    const signedIn = await puter.auth.isSignedIn();
+    if(signedIn){ const user = await puter.auth.getUser(); userEl.textContent = user?.username || 'Puter account'; }
+    else userEl.textContent = 'Not signed in yet';
+  }catch(e){ userEl.textContent = 'Unknown'; }
+}
+document.getElementById('signOutBtn').onclick = async ()=>{
+  try{ await puter.auth.signOut(); location.reload(); }catch(e){}
+};
+document.getElementById('eraseAllBtn').onclick = async ()=>{
+  if(!confirm('Erase every world and conversation? This can\'t be undone.')) return;
+  const index = await getIndex();
+  for(const w of index) await deleteWorldData(w.id);
+  await saveIndex([]);
+  await renderLibrary(); showLibrary();
+};
+
+els.editorBackBtn.onclick = ()=>{ renderLibrary(); showLibrary(); };
+els.chatBackBtn.onclick = ()=>{ renderLibrary(); showLibrary(); };
+
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+
+// ---------- library ----------
+async function renderTagRow(){
+  const index = await getIndex();
+  const allTags = new Set();
+  index.forEach(w => (w.tags||[]).forEach(t=>allTags.add(t)));
+  els.tagRow.innerHTML = '';
+  const chips = ['All', ...Array.from(allTags)];
+  chips.forEach(tag=>{
+    const c = document.createElement('div');
+    c.className = 'tag-chip' + ((tag==='All' && !state.activeTag) || tag===state.activeTag ? ' active' : '');
+    c.textContent = tag;
+    c.onclick = ()=>{ state.activeTag = tag==='All' ? null : tag; renderLibrary(); };
+    els.tagRow.appendChild(c);
+  });
+}
+
+async function renderLibrary(){
+  await renderTagRow();
+  const index = await getIndex();
+  const q = els.searchInput.value.trim().toLowerCase();
+  const filtered = index.filter(w=>{
+    if(state.activeTag && !(w.tags||[]).includes(state.activeTag)) return false;
+    if(q && !(w.name+w.tagline).toLowerCase().includes(q)) return false;
+    return true;
+  });
+  els.libGrid.innerHTML = '';
+  els.libEmpty.classList.toggle('screen-hidden', index.length>0);
+  for(const w of filtered){
+    const chat = await getChat(w.id);
+    const tile = document.createElement('div');
+    tile.className = 'world-card';
+    const chipsHtml = (w.tags||[]).slice(0,3).map(t=>`<span class="mini-chip">${escapeHtml(t)}</span>`).join('');
+    tile.innerHTML = `
+      <div class="cover-wrap ${w.cover?'':'placeholder'}">
+        ${w.cover ? `<img src="${w.cover}">` : (w.name||'?').charAt(0)}
+        <div class="cover-fade"></div>
+        <div class="msg-count"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg> ${chat.length}</div>
+      </div>
+      <div class="card-info">
+        <div class="card-name">${escapeHtml(w.name)}</div>
+        <div class="card-tag">${escapeHtml(w.tagline||'')}</div>
+        <div class="card-chips">${chipsHtml}</div>
+      </div>`;
+    tile.onclick = ()=> openStory(w.id);
+    els.libGrid.appendChild(tile);
+  }
+}
+els.searchInput.addEventListener('input', ()=> renderLibrary());
+els.newCardBtn.onclick = ()=> openEditor(null);
+
+// ---------- editor ----------
+function openEditor(worldOrNull){
+  state.editingId = worldOrNull ? worldOrNull.id : null;
+  state.pendingCover = worldOrNull ? worldOrNull.cover : null;
+  els.editorTitle.textContent = worldOrNull ? 'Edit world' : 'New world';
+  els.fName.value = worldOrNull?.name || '';
+  els.fTagline.value = worldOrNull?.tagline || '';
+  els.fTags.value = (worldOrNull?.tags||[]).join(', ');
+  els.fLore.value = worldOrNull?.lore || '';
+  els.fOpening.value = worldOrNull?.opening || '';
+  els.avatarPreview.innerHTML = state.pendingCover
+    ? `<img src="${state.pendingCover}" style="width:100%;height:100%;object-fit:cover;">`
+    : ((worldOrNull?.name||'葉').charAt(0));
+  els.deleteCardBtn.classList.toggle('screen-hidden', !worldOrNull);
+  showEditor();
+}
+els.avatarBtn.onclick = ()=> els.fileInput.click();
+els.fileInput.onchange = async ()=>{
+  const file = els.fileInput.files[0]; if(!file) return;
+  const dataUrl = await resizeImageToDataUrl(file);
+  state.pendingCover = dataUrl;
+  els.avatarPreview.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;">`;
+};
+els.saveCardBtn.onclick = async ()=>{
+  const name = els.fName.value.trim();
+  if(!name){ els.fName.focus(); return; }
+  const id = state.editingId || ('w'+Date.now());
+  const tags = els.fTags.value.split(',').map(t=>t.trim()).filter(Boolean);
+  const world = {
+    id, name, tagline: els.fTagline.value.trim(), tags,
+    lore: els.fLore.value.trim(),
+    opening: els.fOpening.value.trim() || `Narrate the player's arrival in ${name}. Set the scene in second person, 3-4 sentences, then end on a moment the player can respond to.`,
+    cover: state.pendingCover || null,
+  };
+  els.saveCardBtn.disabled = true; els.saveCardBtn.textContent = 'Saving...';
+  await saveWorld(world);
+  const index = await getIndex();
+  const idx = index.findIndex(w=>w.id===id);
+  const entry = {id, name, tagline:world.tagline, cover:world.cover, tags};
+  if(idx>-1) index[idx] = entry; else index.push(entry);
+  await saveIndex(index);
+  els.saveCardBtn.disabled = false; els.saveCardBtn.textContent = 'Save world';
+  await openStory(id);
+};
+els.deleteCardBtn.onclick = async ()=>{
+  if(!confirm('Delete this world and its whole story so far? This can\'t be undone.')) return;
+  const id = state.editingId;
+  await deleteWorldData(id);
+  const index = (await getIndex()).filter(w=>w.id!==id);
+  await saveIndex(index);
+  await renderLibrary(); showLibrary();
+};
+
+// ---------- story chat ----------
+function worldSystemPrompt(world, memory){
+  const memCtx = memory ? `\n\nWhat has happened in the story so far:\n${memory}` : '';
+  return `You are the narrator and every character of this story world.\n\nWorld & characters:\n${world.lore || '(no details given — invent something fitting the world name and tagline)'}\n\nRules: narrate in strict second person ("you") from the player's own point of view only. Describe only what the player can directly see, hear, or sense. Voice other characters only through visible dialogue and action, never their private thoughts. Keep replies immersive but concise — 2-5 sentences unless a scene truly calls for more. No stage directions in asterisks; weave narration and dialogue naturally.${memCtx}`;
+}
+
+async function openStory(id){
+  const world = await getWorld(id);
+  if(!world) return;
+  state.chattingId = id;
+  els.chatName.textContent = world.name;
+  els.chatBg.style.backgroundImage = world.cover ? `url(${world.cover})` : 'none';
+  if(world.cover){ els.chatAvatar.classList.remove('placeholder'); els.chatAvatar.innerHTML = `<img src="${world.cover}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`; }
+  else { els.chatAvatar.classList.add('placeholder'); els.chatAvatar.textContent = world.name.charAt(0); }
+  els.log.innerHTML = ''; els.suggestRow.innerHTML = '';
+  showChat();
+
+  let chat = await getChat(id);
+  if(chat.length === 0){
+    showTyping();
+    let text;
+    try{ text = await askAI(worldSystemPrompt(world, ''), world.opening); }
+    catch(err){
+      hideTyping();
+      const w = document.createElement('div'); w.className='warn'; w.textContent = '⚠️ ' + err.message;
+      els.log.appendChild(w);
+      const retry = document.createElement('button'); retry.className='warn';
+      retry.style.cssText='background:none;border:1px solid var(--line);color:var(--text);padding:8px 16px;border-radius:16px;cursor:pointer;';
+      retry.textContent = 'Retry'; retry.onclick = ()=> openStory(id);
+      els.log.appendChild(retry);
+      return;
+    }
+    hideTyping();
+    chat = [{role:'ai', text, ts:Date.now()}];
+    await saveChat(id, chat);
+  }
+  chat.forEach((m,i) => renderMsg(m, i===chat.length-1));
+  els.log.scrollTop = els.log.scrollHeight;
+}
+
+function renderMsg(m, isLast){
+  const wrap = document.createElement('div');
+  wrap.className = 'msg ' + (m.role==='user' ? 'user' : 'ai');
+  wrap.innerHTML = `<div class="bubble">${escapeHtml(m.text)}</div>`;
+  if(m.role==='ai' && isLast){
+    const actions = document.createElement('div'); actions.className='msg-actions';
+    actions.innerHTML = `<button title="Regenerate" id="regenBtn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v6h-6"/></svg>
+    </button>`;
+    wrap.appendChild(actions);
+    setTimeout(()=>{ const b=document.getElementById('regenBtn'); if(b) b.onclick = regenerateLast; }, 0);
+  }
+  els.log.appendChild(wrap);
+  els.log.scrollTop = els.log.scrollHeight;
+}
+
+function showTyping(){
+  const wrap = document.createElement('div'); wrap.className = 'msg ai typing'; wrap.id = 'typingIndicator';
+  wrap.innerHTML = `<div class="bubble"><span></span><span></span><span></span></div>`;
+  els.log.appendChild(wrap); els.log.scrollTop = els.log.scrollHeight;
+}
+function hideTyping(){ document.getElementById('typingIndicator')?.remove(); }
+
+els.memoryBtn.onclick = async ()=>{
+  const mem = await getMemory(state.chattingId);
+  els.memoryContent.textContent = mem || 'Nothing remembered yet — memory builds up as you play.';
+  els.memoryModal.style.display = 'flex';
+};
+els.closeMemoryBtn.onclick = ()=> els.memoryModal.style.display = 'none';
+els.memoryModal.onclick = (e)=>{ if(e.target===els.memoryModal) els.memoryModal.style.display='none'; };
+
+// ---------- export / import a world (download & continue later, on this device or another) ----------
+async function exportWorld(id){
+  const world = await getWorld(id);
+  if(!world) return;
+  const chat = await getChat(id);
+  const memory = await getMemory(id);
+  const payload = { app:'worlds-export', version:1, exportedAt:new Date().toISOString(), world, chat, memory };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (world.name||'world').trim().replace(/[^a-z0-9]+/gi,'_').toLowerCase() + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+els.exportBtn.onclick = ()=>{ if(state.chattingId) exportWorld(state.chattingId); };
+
+async function importWorldFromFile(file){
+  let data;
+  try{ data = JSON.parse(await file.text()); }
+  catch(e){ alert('That file isn\'t a valid world backup.'); return; }
+  if(!data || !data.world || !data.world.name){ alert('That file isn\'t a valid world backup.'); return; }
+
+  const index = await getIndex();
+  let id = data.world.id;
+  if(!id || index.some(w=>w.id===id)) id = 'w'+Date.now(); // avoid clobbering an existing world
+  const world = {...data.world, id};
+
+  await saveWorld(world);
+  if(Array.isArray(data.chat)) await saveChat(id, data.chat);
+  if(typeof data.memory === 'string') await saveMemory(id, data.memory);
+
+  index.push({id, name:world.name, tagline:world.tagline, cover:world.cover||null, tags:world.tags||[]});
+  await saveIndex(index);
+  await renderLibrary();
+  await openStory(id); // jump straight in — the story continues from where the file left off
+}
+els.importWorldBtn.onclick = ()=> els.importFileInput.click();
+els.importFileInput.onchange = ()=>{
+  const file = els.importFileInput.files[0];
+  els.importFileInput.value = '';
+  if(file) importWorldFromFile(file);
+};
+
+let isSending = false;
+
+async function regenerateLast(){
+  if(isSending) return;
+  const world = await getWorld(state.chattingId);
+  let chat = await getChat(world.id);
+  if(chat.length && chat[chat.length-1].role==='ai') chat.pop();
+  els.log.lastElementChild?.remove();
+  await saveChat(world.id, chat);
+  await continueStory(world, chat);
+}
+
+async function continueStory(world, chat){
+  isSending = true; els.sendBtn.disabled = true;
+  const memory = await getMemory(world.id);
+  const recentLog = chat.slice(-12).map(m => m.role==='user' ? `Player: ${m.text}` : `Story: ${m.text}`).join('\n');
+  showTyping();
+  let reply;
+  try{
+    reply = await askAI(worldSystemPrompt(world, memory), `Story so far:\n${recentLog}\n\nContinue the story naturally in response to what the player just did or said.`);
+  }catch(err){
+    hideTyping();
+    const w = document.createElement('div'); w.className = 'warn'; w.textContent = '⚠️ ' + err.message;
+    els.log.appendChild(w); els.log.scrollTop = els.log.scrollHeight;
+    els.sendBtn.disabled = false; isSending = false;
+    return;
+  }
+  hideTyping();
+  document.querySelectorAll('.msg-actions').forEach(a=>a.remove());
+  chat.push({role:'ai', text:reply, ts:Date.now()});
+  renderMsg({role:'ai', text:reply}, true);
+  await saveChat(world.id, chat);
+  els.sendBtn.disabled = false; isSending = false;
+  updateMemory(world);
+}
+
+async function sendMessage(){
+  if(isSending) return;
+  const val = els.textInput.value.trim();
+  if(!val) return;
+  const world = await getWorld(state.chattingId);
+  els.textInput.value = '';
+  els.suggestRow.innerHTML = '';
+  let chat = await getChat(world.id);
+  document.querySelectorAll('.msg-actions').forEach(a=>a.remove());
+  chat.push({role:'user', text:val, ts:Date.now()});
+  renderMsg({role:'user', text:val}, false);
+  await saveChat(world.id, chat);
+  await continueStory(world, chat);
+}
+els.sendBtn.onclick = sendMessage;
+els.textInput.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); sendMessage(); } });
+
+els.ideaBtn.onclick = async ()=>{
+  if(isSending) return;
+  const world = await getWorld(state.chattingId);
+  const chat = await getChat(world.id);
+  const recentLog = chat.slice(-8).map(m => m.role==='user' ? `Player: ${m.text}` : `Story: ${m.text}`).join('\n');
+  els.ideaBtn.disabled = true;
+  try{
+    const raw = await askAI(
+      'Given the recent story, suggest exactly 3 short, distinct things the player could say or do next. One per line, no numbering, no quotes, under 12 words each.',
+      `Story so far:\n${recentLog}\n\nSuggest 3 next actions.`
+    );
+    const ideas = raw.split('\n').map(s=>s.replace(/^[-*\d.)\s]+/,'').trim()).filter(Boolean).slice(0,3);
+    els.suggestRow.innerHTML = '';
+    ideas.forEach(idea=>{
+      const chip = document.createElement('div'); chip.className='suggest-chip'; chip.textContent = idea;
+      chip.onclick = ()=>{ els.textInput.value = idea; els.suggestRow.innerHTML=''; sendMessage(); };
+      els.suggestRow.appendChild(chip);
+    });
+  }catch(e){ /* silently ignore */ }
+  els.ideaBtn.disabled = false;
+};
+
+// ---------- boot ----------
+(async ()=>{ await renderLibrary(); showLibrary(); setActiveTab('library'); })();
+</script>
+</body>
+</html>
