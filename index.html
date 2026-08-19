@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Worlds</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=Playfair+Display:ital,wght@0,600;0,700;1,500;1,600&family=EB+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0D0F13; --bg-elev:#161922; --panel:rgba(10,12,16,0.62); --panel-solid:#181B22;
+    --text:#F2F1ED; --text-dim:#9A9FAC; --line:rgba(255,255,255,0.09);
+    --amber:#FFFFFF; --amber-deep:#CCCCCC; --violet:#7C5CFC; --rose:#E0637A;
+    --panel-gold:#C9A45D; --panel-gold-soft:rgba(201,164,93,0.10); --panel-gold-line:rgba(201,164,93,0.32);
+    --diary-ink:#2E2117; --diary-ink-soft:#6B5842; --diary-line:rgba(46,33,23,0.20);
+    --diary-wax:#7D3128; --diary-wax-soft:rgba(125,49,40,0.08); --diary-wax-line:rgba(125,49,40,0.34);
+    --paper-a:#F2EAD8; --paper-b:#E5D9BE;
+    --letter-ink:#2E2024; --letter-ink-soft:#6E4A50; --letter-line:rgba(59,42,46,0.16);
+    --burgundy:#5B2430; --burgundy-soft:rgba(91,36,48,0.08); --burgundy-line:rgba(139,85,96,0.42);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;}
+  body{background:var(--bg); font-family:'Inter',sans-serif; color:var(--text); display:flex; justify-content:center; min-height:100vh;}
+  #app{width:100%; max-width:480px; min-height:100vh; display:flex; flex-direction:column; position:relative; background:var(--bg);}
+
+  /* ---------- library topbar ---------- */
+  #topbar{padding:16px 16px 10px; border-bottom:1px solid var(--line);}
+  #topbar .row1{display:flex; align-items:center; gap:10px;}
+  #searchBox{flex:1; display:flex; align-items:center; gap:8px; background:var(--bg-elev); border:1px solid var(--line); border-radius:14px; padding:10px 13px;}
+  #searchBox svg{flex-shrink:0; opacity:.55;}
+  #searchInput{border:none; background:none; outline:none; color:var(--text); font-family:inherit; font-size:14px; width:100%;}
+  #searchInput::placeholder{color:var(--text-dim);}
+  #tagRow{display:flex; gap:8px; margin-top:12px; overflow-x:auto; padding-bottom:2px; scrollbar-width:none;}
+  #tagRow::-webkit-scrollbar{display:none;}
+  .tag-chip{flex-shrink:0; padding:7px 14px; border-radius:20px; font-size:12.5px; font-weight:600; background:var(--bg-elev); color:var(--text-dim); border:1px solid var(--line); cursor:pointer; white-space:nowrap;}
+  .tag-chip.active{background:var(--amber); color:#1A1204; border-color:var(--amber);}
+
+  #library{flex:1; padding:16px 14px 90px; overflow-y:auto;}
+  .screen-hidden{display:none !important;}
+  #libEmpty{padding:70px 20px; text-align:center; color:var(--text-dim);}
+  #libEmpty .display{font-family:'Fraunces',serif; font-size:18px; color:var(--text); margin-bottom:6px; font-weight:600;}
+  #libGrid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .world-card{background:var(--panel-solid); border-radius:14px; overflow:hidden; cursor:pointer; border:1px solid var(--line); display:flex; flex-direction:column;}
+  .cover-wrap{position:relative; aspect-ratio:3/4; background:linear-gradient(160deg,#22262f,#14161b);}
+  .cover-wrap img{width:100%;height:100%;object-fit:cover; display:block;}
+  .cover-wrap.placeholder{display:flex;align-items:center;justify-content:center; font-family:'Fraunces',serif; font-size:34px; color:var(--text-dim);}
+  .cover-fade{position:absolute; left:0; right:0; bottom:0; height:60%; background:linear-gradient(to top, rgba(0,0,0,0.88), transparent); pointer-events:none;}
+  .msg-count{position:absolute; left:9px; bottom:9px; display:flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:#E8E6DF;}
+  .msg-count svg{opacity:.85;}
+  .card-info{padding:10px 11px 12px;}
+  .card-name{font-family:'Fraunces',serif; font-weight:600; font-size:14.5px; color:var(--text); line-height:1.25; margin-bottom:3px;}
+  .card-tag{font-size:11.5px; color:var(--text-dim); line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin-bottom:8px;}
+  .card-chips{display:flex; gap:5px; flex-wrap:wrap;}
+  .mini-chip{font-size:10px; font-weight:600; color:var(--text-dim); background:rgba(255,255,255,0.06); padding:3px 8px; border-radius:8px;}
+
+  #newCardBtn{display:none;}
+
+  /* ---------- bottom nav ---------- */
+  #bottomNav{position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:480px; display:flex; align-items:center; justify-content:space-around; background:var(--panel-solid); border-top:1px solid var(--line); padding:8px 6px calc(8px + env(safe-area-inset-bottom)); z-index:15;}
+  .nav-item{background:none; border:none; display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--text-dim); font-size:10px; font-weight:600; cursor:pointer; padding:4px 8px; flex:1;}
+  .nav-item svg{opacity:.75;}
+  .nav-item.active{color:var(--amber);}
+  .nav-item.active svg{opacity:1;}
+  .nav-item.plus{margin-top:-26px;}
+  .nav-item.plus .plus-circle{width:50px;height:50px;border-radius:50%; background:var(--amber); display:flex; align-items:center; justify-content:center; margin-bottom:2px;}
+  .nav-item.plus.active{color:var(--text-dim);}
+  body{padding-bottom:0;}
+  #library, #messagesScreen, #settingsScreen{padding-bottom:96px !important;}
+
+  /* ---------- editor ---------- */
+  #editor{flex:1; padding:18px 16px 100px; overflow-y:auto; display:none;}
+  #editor .backRow{display:flex; align-items:center; gap:10px; margin-bottom:16px;}
+  #editor .backRow button{background:none; border:1px solid var(--line); color:var(--text); font-size:12px; padding:7px 12px; border-radius:20px; cursor:pointer;}
+  #editor .backRow h2{margin:0; font-family:'Fraunces',serif; font-size:17px; font-weight:600;}
+  .panel{background:var(--panel-solid); border:1px solid var(--line); border-radius:16px; padding:18px 16px 20px;}
+  .field{margin-bottom:16px;}
+  .field label{display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-dim); margin-bottom:7px;}
+  .field input[type=text], .field textarea{width:100%; border:1px solid var(--line); border-radius:10px; background:var(--bg-elev); font-family:'Inter',sans-serif; font-size:14.5px; color:var(--text); padding:10px 12px; resize:vertical;}
+  .field textarea{min-height:80px; line-height:1.5;}
+  .field input:focus, .field textarea:focus{outline:none; border-color:var(--amber);}
+  #avatarRow{display:flex; align-items:center; gap:14px; margin-bottom:18px;}
+  #avatarPreview{width:76px;height:96px;border-radius:10px; object-fit:cover; background:var(--bg-elev); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; color:var(--text-dim); font-size:26px; font-family:'Fraunces',serif; flex-shrink:0; overflow:hidden;}
+  #avatarBtn{background:none; border:1px solid var(--line); color:var(--text); border-radius:20px; padding:9px 16px; font-size:12.5px; cursor:pointer;}
+  #bgRow{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+  #bgPreview{width:56px;height:56px;border-radius:10px; background:var(--bg-elev) center/cover no-repeat; border:1px solid var(--line); flex-shrink:0;}
+  #bgBtn, #bgClearBtn{background:none; border:1px solid var(--line); color:var(--text); border-radius:20px; padding:9px 16px; font-size:12.5px; cursor:pointer;}
+  #bgClearBtn{color:var(--rose); border-color:rgba(224,99,122,0.4);}
+  #saveCardBtn{width:100%; margin-top:6px; background:var(--amber); color:#1A1204; border:none; border-radius:12px; padding:14px; font-family:'Inter',sans-serif; font-weight:700; font-size:15px; cursor:pointer;}
+  #deleteCardBtn{width:100%; margin-top:10px; background:none; color:var(--rose); border:1px solid rgba(224,99,122,0.4); border-radius:12px; padding:12px; font-size:13px; cursor:pointer;}
+
+  /* ---------- chat ---------- */
+  #chatScreen{flex:1; display:none; flex-direction:column; position:relative; min-height:100vh;
+    background: linear-gradient(170deg, var(--paper-a) 0%, var(--paper-b) 100%);}
+  #chatBg{position:fixed; inset:0; max-width:480px; margin:0 auto; background-size:cover; background-position:center; z-index:0;}
+  #chatBg::after{content:''; position:absolute; inset:0; background:linear-gradient(to bottom, rgba(13,15,19,0.55) 0%, rgba(13,15,19,0.3) 22%, rgba(13,15,19,0.3) 78%, rgba(13,15,19,0.55) 100%);}
+  #chatHeader{display:flex; align-items:center; gap:10px; padding:calc(12px + env(safe-area-inset-top)) 14px 16px; position:fixed; top:0; left:0; right:0; max-width:480px; margin:0 auto; z-index:5; background:none;}
+  #chatHeader button.iconbtn{background:none; border:none; color:var(--letter-ink); width:36px;height:36px; border-radius:11px; cursor:pointer; display:flex;align-items:center;justify-content:center; flex-shrink:0; transition:background .15s;}
+  #chatHeader button.iconbtn:active{background:var(--burgundy-soft);}
+  #chatSettingsBtn{margin-left:auto;}
+  #chatTitleWrap{display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.4); border:1px solid var(--burgundy-line); border-radius:20px; padding:5px 14px 5px 5px; cursor:pointer; min-width:0;}
+  #chatAvatar{width:28px;height:28px;border-radius:50%; object-fit:cover; background:var(--paper-b); flex-shrink:0;}
+  #chatAvatar.placeholder{display:flex;align-items:center;justify-content:center; font-family:'Fraunces',serif; color:var(--letter-ink-soft); font-size:12.5px;}
+  #chatName{font-size:13.5px; font-weight:700; letter-spacing:.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:130px; color:var(--letter-ink);}
+  #exportBtn{margin-left:auto; background:rgba(255,255,255,0.4); border:1px solid var(--burgundy-line); color:var(--letter-ink); font-size:14px; font-weight:700; padding:7px 10px; border-radius:20px; cursor:pointer;}
+  #memoryBtn{background:rgba(255,255,255,0.4); border:1px solid var(--burgundy-line); color:var(--burgundy); font-size:11.5px; font-weight:700; padding:7px 12px; border-radius:20px; cursor:pointer; margin-left:8px;}
+
+  #log{flex:1; overflow-y:auto; padding:82px 14px 130px; display:flex; flex-direction:column; gap:12px; position:relative; z-index:2; scrollbar-width:none;}
+  #log::-webkit-scrollbar{display:none;}
+  .msg{max-width:92%; animation:msgIn .25s ease both;}
+  @keyframes msgIn{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+  .msg.user{align-self:flex-end; max-width:80%;}
+  .bubble{padding:13px 16px; border-radius:8px; font-size:17px; line-height:1.58; box-shadow:0 6px 16px rgba(59,42,46,0.12); font-family:'Inter', sans-serif;}
+  .bubble .dialogue{font-weight:700; font-size:1.05em;}
+  .msg.ai .bubble{background:rgba(255,255,255,0.72); color:var(--letter-ink); border:1px solid var(--letter-line); border-bottom-left-radius:4px;}
+  .msg.user .bubble{background:rgba(255,255,255,0.82); color:var(--letter-ink); font-weight:500; border:1px solid var(--letter-line); border-bottom-right-radius:4px; box-shadow:0 6px 16px rgba(59,42,46,0.14);}
+  .msg.system .bubble{background:rgba(255,255,255,0.8); color:var(--letter-ink-soft); border:1px solid var(--burgundy-line); border-bottom-left-radius:4px;}
+  .sys-label{font-size:10.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--burgundy); margin:0 4px 6px;}
+  .bubble p{margin:0 0 8px;}
+  .bubble p:last-child{margin-bottom:0;}
+  .bubble ul{margin:2px 0 10px; padding-left:18px;}
+  .bubble ul:last-child{margin-bottom:0;}
+  .bubble li{margin-bottom:4px;}
+  .bubble b{font-weight:700;}
+  .msg-actions{display:flex; gap:6px; padding:7px 2px 0; align-items:center;}
+  .msg-actions button{background:rgba(255,255,255,0.25); border:1px solid transparent; color:var(--letter-ink-soft); cursor:pointer; padding:6px; border-radius:8px; display:flex; align-items:center; transition:background .15s, color .15s;}
+  .msg-actions button:active{color:var(--burgundy); background:rgba(255,255,255,0.45);}
+
+  #chatFooter{position:fixed; left:0; right:0; bottom:0; max-width:480px; margin:0 auto; z-index:5; background:linear-gradient(to top, var(--paper-b) 42%, rgba(229,217,190,0.94) 75%, rgba(229,217,190,0) 100%); padding-top:22px;}
+  #suggestRow{display:flex; gap:8px; overflow-x:auto; padding:0 14px; position:relative; z-index:2; scrollbar-width:none;}
+  #suggestRow:not(:empty){padding-bottom:10px;}
+  #suggestRow::-webkit-scrollbar{display:none;}
+  .suggest-chip{flex-shrink:0; background:rgba(255,255,255,0.4); border:1px solid var(--burgundy-line); color:var(--letter-ink); font-family:'Inter', sans-serif; font-size:12.5px; padding:9px 14px; border-radius:14px; cursor:pointer; white-space:nowrap; max-width:260px; overflow:hidden; text-overflow:ellipsis; transition:background .15s;}
+  .suggest-chip:active{background:rgba(255,255,255,0.65);}
+
+  #inputRow{display:flex; gap:8px; align-items:center; padding:0 10px calc(14px + env(safe-area-inset-bottom)); position:relative; z-index:2;}
+  #inputBar{flex:1; min-width:0; display:flex; align-items:center; gap:4px; background:rgba(255,255,255,0.45); border:1px solid var(--burgundy-line); border-radius:10px; padding:5px 6px 5px 15px;}
+  #panelBtn{background:none; border:none; color:var(--burgundy); width:34px;height:34px; border-radius:8px; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; transition:background .15s;}
+  #panelBtn:active{background:rgba(255,255,255,0.35);}
+  #textInput{flex:1; min-width:0; border:none; border-radius:0; padding:9px 6px; font-family:'Inter',sans-serif; font-size:14.5px; background:none; color:var(--letter-ink); outline:none;}
+  #textInput::placeholder{color:var(--letter-ink-soft);}
+  #sendBtn{background:linear-gradient(160deg, var(--burgundy) 0%, #3F1017 100%); color:var(--paper-a); border:none; border-radius:14px; width:44px;height:44px; font-weight:700; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 14px rgba(59,42,46,0.35), inset 0 1px 0 rgba(255,255,255,0.15); transition:transform .1s, box-shadow .1s;}
+  #sendBtn:active{transform:scale(0.94); box-shadow:0 2px 8px rgba(59,42,46,0.3), inset 0 1px 0 rgba(255,255,255,0.15);}
+  #sendBtn svg{margin-left:1px;}
+  #sendBtn:disabled{opacity:.5; box-shadow:none; transform:none;}
+
+  .typing .bubble{display:flex; gap:4px; padding:14px 16px;}
+  .typing span{width:6px;height:6px;border-radius:50%;background:var(--letter-ink-soft);opacity:.4;animation:blink 1.1s infinite;}
+  .typing span:nth-child(2){animation-delay:.18s;} .typing span:nth-child(3){animation-delay:.36s;}
+  @keyframes blink{0%,80%,100%{opacity:.25;transform:translateY(0);}40%{opacity:.9;transform:translateY(-2px);}}
+
+  .warn{font-size:12px; color:var(--rose); text-align:center; padding:8px 20px; line-height:1.5; position:relative; z-index:2;}
+  #fileInput{display:none;}
+
+  /* ---------- memory modal ---------- */
+  #memoryModal{position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:20; padding:20px;}
+  #memoryModal .sheet{width:100%; max-width:360px; background:var(--panel-solid); border-radius:18px; padding:20px 18px 22px; max-height:70vh; overflow-y:auto; box-shadow:0 24px 60px rgba(0,0,0,0.55); border:1px solid var(--line);}
+
+  #chatSettingsModal{position:fixed; inset:0; background:transparent; display:none; z-index:20;}
+  #chatSettingsModal .sheet{position:absolute; top:calc(50px + env(safe-area-inset-top)); right:14px; width:200px; max-width:62vw; background:var(--panel-solid); border-radius:16px; padding:6px; max-height:70vh; overflow-y:auto; box-shadow:0 18px 44px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.35); border:1px solid var(--line); transform-origin:top right;}
+  #chatSettingsModal h3{margin:0; padding:10px 12px 8px; font-family:'Fraunces',serif; font-size:14.5px; font-weight:600; color:var(--text); border-bottom:1px solid var(--line);}
+  #chatSettingsModal .settings-btn{width:100%; background:none; border:none; border-radius:10px; color:var(--text); text-align:left; padding:11px 10px; font-family:'Inter',sans-serif; font-size:13.5px; font-weight:500; cursor:pointer; margin:2px 0 0; transition:background .12s;}
+  #chatSettingsModal .settings-btn:active{background:rgba(255,255,255,0.08);}
+  #memoryModal h3, #chatSettingsModal h3{margin:0 0 4px; font-family:'Fraunces',serif; font-size:16px;}
+  #memoryModal p.sub, #chatSettingsModal p.sub{margin:0 0 14px; font-size:12px; color:var(--text-dim);}
+  #memoryContent{font-size:13.5px; line-height:1.65; color:var(--text); white-space:pre-wrap;}
+  #memoryModal button#closeMemoryBtn{margin-top:16px; width:100%; background:var(--bg-elev); border:1px solid var(--line); color:var(--text); border-radius:12px; padding:12px; font-size:13.5px; cursor:pointer;}
+
+  /* ---------- character panel modal (Victorian letter) ---------- */
+  #panelModal{position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:20; padding:20px;}
+  #panelModal .sheet{
+    position:relative; width:100%; max-width:380px;
+    background: linear-gradient(170deg, var(--paper-a) 0%, var(--paper-b) 100%);
+    background-image:
+      radial-gradient(circle at 10% 6%, rgba(91,36,48,0.05), transparent 42%),
+      radial-gradient(circle at 90% 94%, rgba(91,36,48,0.05), transparent 42%),
+      linear-gradient(170deg, var(--paper-a) 0%, var(--paper-b) 100%);
+    border-radius:3px; padding:30px 26px 26px 20px;
+    max-height:78vh; overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none;
+    box-shadow:0 16px 40px rgba(0,0,0,0.42), inset 0 0 0 1px rgba(59,42,46,0.1);
+    border:1px solid rgba(59,42,46,0.16);
+  }
+  #panelModal .sheet::-webkit-scrollbar{display:none;}
+  #panelModal .sheet::before{
+    content:''; position:absolute; inset:0; pointer-events:none; opacity:.35; mix-blend-mode:multiply; border-radius:3px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
+  }
+  .panel-header{position:relative; display:flex; align-items:center; justify-content:space-between; gap:18px; margin-bottom:38px; padding-bottom:16px; border-bottom:1px solid var(--burgundy-line);}
+  .panel-header h3{margin:0; font-family:'Playfair Display', serif; font-style:italic; font-weight:700; font-size:28px; color:var(--burgundy); letter-spacing:.005em;}
+  .panel-header .sub{display:block; margin-top:0; font-family:'EB Garamond', serif; font-weight:600; font-size:20px; letter-spacing:.16em; text-transform:uppercase; color:var(--letter-ink-soft);}
+  .panel-close{background:transparent; border:none; color:var(--letter-ink-soft); width:30px; height:30px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .panel-close:active{background:var(--burgundy-soft); color:var(--burgundy);}
+  .panel-section{margin-bottom:70px; position:relative;}
+  .panel-section:last-child{margin-bottom:0;}
+  .panel-sec-title{font-family:'EB Garamond', serif; font-style:normal; font-size:17px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--burgundy); margin-bottom:16px; display:inline-block; padding-bottom:4px; border-bottom:1px solid var(--burgundy-line);}
+  .panel-sec-title::before{content:'[ '; }
+  .panel-sec-title::after{content:' ]'; }
+  .panel-row{display:flex; align-items:baseline; gap:10px; padding:10px 0; font-family:'EB Garamond', serif; font-size:15.5px; color:var(--letter-ink);}
+  .panel-k{color:var(--burgundy); font-weight:700; font-style:normal; font-size:14.5px; letter-spacing:.03em; text-transform:uppercase; flex-shrink:0; opacity:.85;}
+  .panel-v{color:var(--letter-ink); font-weight:700; font-family:'Caveat', cursive; font-size:24px; letter-spacing:.01em; text-align:right; flex-shrink:0; margin-left:auto;}
+  .panel-chips{display:flex; flex-wrap:wrap; gap:9px;}
+  .panel-chip{background:rgba(255,255,255,0.35); border:1px solid var(--burgundy-line); color:var(--letter-ink); font-family:'EB Garamond', serif; font-weight:600; font-size:14.5px; letter-spacing:.02em; padding:7px 15px; border-radius:1px;}
+  .panel-ul{margin:0; padding-left:2px; list-style:none; font-family:'EB Garamond', serif; font-size:17.5px; line-height:1.65; color:var(--letter-ink);}
+  .panel-ul li{margin-bottom:7px; padding-left:19px; position:relative;}
+  .panel-ul li::before{content:'—'; position:absolute; left:0; color:var(--burgundy); font-size:13px;}
+  .panel-empty{font-family:'EB Garamond', serif; font-size:14px; color:var(--letter-ink-soft); font-style:italic;}
+  .panel-status{font-family:'EB Garamond', serif; font-style:italic; font-size:17px; color:var(--letter-ink); line-height:1.75; background:rgba(255,255,255,0.32); border-left:2px solid var(--burgundy); padding:14px 17px;}
+
+  /* ---------- messages ---------- */
+  #messagesScreen{flex:1; padding:16px 14px 90px; overflow-y:auto; display:none;}
+  #messagesScreen h2{font-family:'Fraunces',serif; font-size:20px; margin:2px 0 16px; font-weight:600;}
+  #msgEmpty{padding:70px 20px; text-align:center; color:var(--text-dim);}
+  .conv-row{display:flex; align-items:center; gap:12px; padding:11px 8px; border-radius:12px; cursor:pointer;}
+  .conv-row:active{background:var(--bg-elev);}
+  .conv-avatar{width:48px;height:48px;border-radius:12px; object-fit:cover; background:var(--bg-elev); flex-shrink:0;}
+  .conv-avatar.placeholder{display:flex;align-items:center;justify-content:center; font-family:'Fraunces',serif; color:var(--text-dim); font-size:19px;}
+  .conv-info{min-width:0; flex:1;}
+  .conv-name{font-weight:700; font-size:14.5px; margin-bottom:2px;}
+  .conv-preview{font-size:12.5px; color:var(--text-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+
+  /* ---------- settings ---------- */
+  #settingsScreen{flex:1; padding:16px 14px 90px; overflow-y:auto; display:none;}
+  #settingsScreen h2{font-family:'Fraunces',serif; font-size:20px; margin:2px 0 16px; font-weight:600;}
+  .settings-card{background:var(--panel-solid); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px;}
+  .settings-card .label{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-dim); margin-bottom:4px; font-weight:700;}
+  .settings-card .value{font-size:14.5px; font-weight:600;}
+  .settings-btn{width:100%; background:var(--bg-elev); border:1px solid var(--line); color:var(--text); border-radius:12px; padding:13px; font-size:13.5px; font-weight:600; cursor:pointer; margin-top:8px;}
+  .settings-btn.danger{color:var(--rose); border-color:rgba(224,99,122,0.4);}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="topbar">
+    <div class="row1">
+      <div id="searchBox">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="searchInput" placeholder="Search your worlds">
+      </div>
+    </div>
+    <div id="tagRow" style="display:none"></div>
+  </div>
+
+  <div id="library">
+    <div id="libEmpty" class="screen-hidden">
+      <div class="display">No worlds yet</div>
+      <div>Build your first one below.</div>
+    </div>
+    <div id="libGrid"></div>
+  </div>
+  <button id="newCardBtn">+ Build a world</button>
+
+  <div id="messagesScreen">
+    <h2>Messages</h2>
+    <div id="msgEmpty" class="screen-hidden"><div>No conversations yet — start a world to begin one.</div></div>
+    <div id="msgList"></div>
+  </div>
+
+  <div id="settingsScreen">
+    <h2>Settings</h2>
+    <div class="settings-card">
+      <div class="label">Gemini API key</div>
+      <div class="value" style="font-weight:400; font-size:13px; color:var(--text-dim); line-height:1.5; margin-bottom:10px;">Stories run on Google's free Gemini API. Get a free key at <span style="color:var(--text);">aistudio.google.com/apikey</span> (no card needed), then paste it below.</div>
+      <input type="text" id="geminiKeyInput" placeholder="Paste your Gemini API key" style="width:100%; border:1px solid var(--line); border-radius:10px; background:var(--bg-elev); font-family:inherit; font-size:13.5px; color:var(--text); padding:10px 12px; margin-bottom:8px;">
+      <button class="settings-btn" id="saveGeminiKeyBtn">Save key</button>
+      <div class="value" id="geminiKeyStatus" style="font-weight:400; font-size:12px; color:var(--text-dim); margin-top:8px;"></div>
+    </div>
+    <div class="settings-card">
+      <div class="label">About</div>
+      <div class="value" style="font-weight:400; font-size:13px; color:var(--text-dim); line-height:1.5;">Worlds stores everything locally on this device (nothing leaves your browser except story requests to Gemini) and generates stories via Google's free Gemini API. Open any story and tap the ⚙️ icon to view memory or back up that story. Clearing your browser data will erase your worlds — use the export option to back them up.</div>
+    </div>
+    <div class="settings-card">
+      <div class="label">Danger zone</div>
+      <button class="settings-btn danger" id="eraseAllBtn">Erase all worlds &amp; conversations</button>
+    </div>
+  </div>
+
+  <div id="bottomNav">
+    <button class="nav-item" data-tab="library">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+      Home
+    </button>
+    <button class="nav-item plus" data-tab="new">
+      <div class="plus-circle"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1A1204" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></div>
+    </button>
+    <button class="nav-item" data-tab="settings">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Settings
+    </button>
+  </div>
+
+  <div id="editor">
+    <div class="backRow">
+      <button id="editorBackBtn">Back</button>
+      <h2 id="editorTitle">New world</h2>
+    </div>
+    <div class="panel">
+      <div id="avatarRow">
+        <div id="avatarPreview">葉</div>
+        <button id="avatarBtn">Upload cover image</button>
+        <input type="file" id="fileInput" accept="image/*">
+      </div>
+      <div class="field">
+        <label>Chat background</label>
+        <div id="bgRow">
+          <div id="bgPreview"></div>
+          <button id="bgBtn" type="button">Upload background image</button>
+          <button id="bgClearBtn" type="button" class="screen-hidden">Remove</button>
+          <input type="file" id="bgFileInput" accept="image/*">
+        </div>
+      </div>
+      <div class="field"><label>World name</label><input type="text" id="fName" placeholder="e.g. Leaf Academy, Marvel Universe"></div>
+      <div class="field"><label>Tagline</label><input type="text" id="fTagline" placeholder="One line — shown in the catalogue"></div>
+      <div class="field"><label>Tags</label><input type="text" id="fTags" placeholder="Adventure, Mystery, Sci-fi (comma-separated)"></div>
+      <div class="field">
+        <label>Setting &amp; characters</label>
+        <textarea id="fLore" placeholder="Describe the world: where/when it is, the tone, the key characters and how they act and speak, and who the player is in it."></textarea>
+      </div>
+      <div class="field"><label>Opening scene</label><textarea id="fOpening" placeholder="How the story begins — set the scene in 2nd person and end on a moment the player can react to."></textarea></div>
+      <button id="saveCardBtn">Save world</button>
+      <button id="deleteCardBtn" class="screen-hidden">Delete this world</button>
+    </div>
+  </div>
+
+  <div id="chatScreen">
+    <div id="chatBg"></div>
+    <div id="chatHeader">
+      <button class="iconbtn" id="chatBackBtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m15 18-6-6 6-6"/></svg></button>
+      <div id="chatTitleWrap">
+        <div id="chatAvatar" class="placeholder">葉</div>
+        <span id="chatName">—</span>
+      </div>
+      <button class="iconbtn" id="chatSettingsBtn" title="Story options">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+    <div id="log"></div>
+    <div id="chatFooter">
+      <div id="suggestRow"></div>
+      <div id="inputRow">
+        <div id="inputBar">
+          <button id="panelBtn" title="Letter of records">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3.5h11.5L20 7v13.5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z"/><path d="M16.5 3.5V7H20"/><path d="M8 12h8M8 15.5h8M8 8.5h4"/></svg>
+          </button>
+          <input id="textInput" placeholder="Say or do something...">
+        </div>
+        <button id="sendBtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.4 22 12 3.4 3.6 3 10l13 2-13 2z"/></svg></button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="chatSettingsModal">
+  <div class="sheet">
+    <h3>Story options</h3>
+    <button class="settings-btn" id="csMemoryBtn">View memory</button>
+    <button class="settings-btn" id="csExportBtn">Download this story</button>
+    <button class="settings-btn" id="csImportBtn">Upload a story file</button>
+    <input type="file" id="csImportFileInput" accept="application/json" style="display:none">
+  </div>
+</div>
+
+<div id="memoryModal">
+  <div class="sheet">
+    <h3>Story memory</h3>
+    <p class="sub">What the AI currently remembers about your story so far</p>
+    <div id="memoryContent">Nothing remembered yet — memory builds up as you play.</div>
+    <button id="closeMemoryBtn">Close</button>
+  </div>
+</div>
+
+<div id="panelModal">
+  <div class="sheet">
+    <div class="panel-header">
+      <h3><span class="sub">A letter of records</span></h3>
+      <button id="closePanelBtn" class="panel-close" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+    <div id="panelContent"></div>
+  </div>
+</div>
+
+<script>
+// ================= storage (IndexedDB — fully local, on-device, no account needed) =================
+const INDEX_KEY = 'wc_index_v2';
+const IDB_NAME = 'worlds_catalog_db';
+const IDB_STORE = 'kv';
+let _idbPromise = null;
+
+function openDB(){
+  if(_idbPromise) return _idbPromise;
+  _idbPromise = new Promise((resolve, reject)=>{
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = ()=>{ req.result.createObjectStore(IDB_STORE); };
+    req.onsuccess = ()=> resolve(req.result);
+    req.onerror = ()=> reject(req.error);
+  });
+  return _idbPromise;
+}
+
+async function kvGet(key){
+  try{
+    const db = await openDB();
+    return await new Promise((resolve)=>{
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const req = tx.objectStore(IDB_STORE).get(key);
+      req.onsuccess = ()=> resolve(req.result !== undefined ? req.result : null);
+      req.onerror = ()=> resolve(null);
+    });
+  }catch(e){ return null; }
+}
+async function kvSet(key, val){
+  try{
+    const db = await openDB();
+    await new Promise((resolve, reject)=>{
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).put(val, key);
+      tx.oncomplete = resolve; tx.onerror = ()=> reject(tx.error);
+    });
+  }catch(e){ console.error('save failed', e); }
+}
+async function kvDel(key){
+  try{
+    const db = await openDB();
+    await new Promise((resolve)=>{
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).delete(key);
+      tx.oncomplete = resolve; tx.onerror = resolve;
+    });
+  }catch(e){}
+}
+
+async function getIndex(){ return (await kvGet(INDEX_KEY)) || []; }
+async function saveIndex(list){ await kvSet(INDEX_KEY, list); }
+async function getWorld(id){ return await kvGet('wc_world_'+id); }
+async function saveWorld(w){ await kvSet('wc_world_'+w.id, w); }
+async function deleteWorldData(id){ await kvDel('wc_world_'+id); await kvDel('wc_chat_'+id); await kvDel('wc_mem_'+id); await kvDel('wc_panel_'+id); }
+async function getChat(id){ return (await kvGet('wc_chat_'+id)) || []; }
+async function saveChat(id, msgs){ await kvSet('wc_chat_'+id, msgs); }
+async function getMemory(id){ return (await kvGet('wc_mem_'+id)) || ''; }
+async function saveMemory(id, mem){ await kvSet('wc_mem_'+id, mem); }
+
+// ---------- character panel (persistent, permanent, grows from the chat itself) ----------
+// Categories are dynamic — the AI can invent a brand-new one (e.g. "Skills & Abilities",
+// "Titles", "Bloodline Traits") the moment it's needed, instead of being boxed into fixed tags.
+// Each category has a type: 'kv' (named stat/value pairs), 'list' (a growing collection), or
+// 'text' (a single free-text value like current status).
+function defaultPanel(){
+  return { categories: {
+    'Identity': { type:'kv', data:{} },
+    'Inventory': { type:'list', data:[] },
+    'Skills & Abilities': { type:'kv', data:{} },
+    'Milestones': { type:'list', data:[] },
+    'Relationships': { type:'kv', data:{} },
+    'Status': { type:'text', data:'' },
+  } };
+}
+function migrateOldPanel(old){
+  // upgrades panels saved under the earlier fixed-field schema
+  return { categories: {
+    'Identity': { type:'kv', data: old.identity||{} },
+    'Inventory': { type:'list', data: old.items||[] },
+    'Skills & Abilities': { type:'kv', data: old.mastery||{} },
+    'Milestones': { type:'list', data: old.milestones||[] },
+    'Relationships': { type:'kv', data: old.relationships||{} },
+    'Status': { type:'text', data: old.status||'' },
+  } };
+}
+function sanitizePanel(p){
+  const out = { categories:{} };
+  for(const [name, cat] of Object.entries(p.categories||{})){
+    if(!cat || !['kv','list','text'].includes(cat.type)) continue;
+    out.categories[name] = { type:cat.type, data: cat.type==='kv' ? (cat.data||{}) : cat.type==='list' ? (cat.data||[]) : (cat.data||'') };
+  }
+  return out;
+}
+async function getPanel(id){
+  const p = await kvGet('wc_panel_'+id);
+  if(!p) return defaultPanel();
+  if(p.categories) return sanitizePanel(p);
+  return migrateOldPanel(p); // legacy panel from before dynamic categories existed
+}
+async function savePanel(id, panel){ await kvSet('wc_panel_'+id, panel); }
+
+// ================= AI =================
+function withTimeout(promise, ms, msg){ return Promise.race([promise, new Promise((_,rej)=>setTimeout(()=>rej(new Error(msg)), ms))]); }
+
+async function askAI(systemPrompt, userPrompt){
+  const key = await getGeminiKey();
+  if(!key) throw new Error('No Gemini API key set. Go to Settings and paste a free key from aistudio.google.com/apikey.');
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${encodeURIComponent(key)}`;
+  const body = {
+    contents: [{ role:'user', parts:[{ text:userPrompt }] }],
+    systemInstruction: { parts:[{ text:systemPrompt }] }
+  };
+  let response;
+  try{
+    response = await withTimeout(
+      fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) }),
+      45000, 'That took too long and timed out. Check your connection and try again.'
+    );
+  }catch(err){ throw err; }
+  if(!response.ok){
+    let msg = `Gemini request failed (${response.status}).`;
+    try{ const errJson = await response.json(); if(errJson?.error?.message) msg = errJson.error.message; }catch(e){}
+    if(response.status === 400 || response.status === 403) msg = 'Your Gemini API key looks invalid. Check it in Settings.';
+    if(response.status === 429) msg = 'Gemini\'s free rate limit was hit — wait a bit and try again.';
+    throw new Error(msg);
+  }
+  const data = await response.json();
+  const text = data?.candidates?.[0]?.content?.parts?.map(p=>p.text).join('') ?? null;
+  if(!text) throw new Error('No reply came back. Try again.');
+  return text.trim();
+}
+
+async function updateMemory(world){
+  const chat = await getChat(world.id);
+  // Only summarize every few turns, not after every single message — this is a full extra AI call.
+  const turnCount = chat.filter(m=>m.role==='user').length;
+  if(turnCount < 6 || turnCount % 4 !== 0) return;
+  const recent = chat.slice(-14);
+  const convo = recent.map(m => `${m.role==='user'?'Player':'Story'}: ${m.text}`).join('\n');
+  const prevMem = await getMemory(world.id);
+  const prompt = `Summarize in 3-5 short factual bullet points what has happened so far in this story and what the world/characters now know about the player. Concise, no preamble, bullets only.\n\n${convo}\n\nPrevious memory: ${prevMem || '(none yet)'}`;
+  try{
+    const summary = await askAI('You maintain a concise ongoing-story memory log. Output only the updated bullet list, nothing else.', prompt);
+    await saveMemory(world.id, summary);
+  }catch(e){ /* non-fatal */ }
+}
+
+async function updatePanel(world){
+  const chat = await getChat(world.id);
+  // Check every 4 chat messages, counting both sides (player + story), not on every single reply — this is a full extra AI call.
+  if(chat.length < 4 || chat.length % 4 !== 0) return;
+  const recent = chat.slice(-8).map(m => `${m.role==='user'?'Player':(m.role==='system'?'System':'Story')}: ${m.text}`).join('\n');
+  const panel = await getPanel(world.id);
+  const prompt = `Recent story log:\n${recent}\n\nCurrent character sheet:\n${panelToText(panel)}\n\nWhat, if anything, is genuinely new or changed?`;
+  const sys = `You maintain a persistent character-sheet tracker for an interactive fiction story, organized into named categories. Each category is one of: "kv" (named stat/value pairs), "list" (a growing collection), or "text" (a single free-text value). Given the recent story log and the current sheet, output ONLY a raw JSON object — no preamble, no markdown fences — describing what's genuinely new or changed since the current sheet, in this exact shape:\n{"categories":{"Category Name":{"kv":{"key":"value"}},"Another Category":{"list_add":["thing"],"list_remove":["thing"]},"Status":{"text":"..."}}}\nYou are not limited to existing category names — invent a new, clearly-named one if something doesn't fit any existing category (e.g. a newly learned skill type, a title, a bloodline trait). If truly nothing new or changed happened in the recent log, output exactly {"categories":{}} and nothing else.`;
+  try{
+    const raw = await askAI(sys, prompt);
+    const cleaned = raw.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+    const data = JSON.parse(cleaned);
+    if(data && data.categories && Object.keys(data.categories).length > 0){
+      mergePanelUpdate(panel, data);
+      await savePanel(world.id, panel);
+    }
+    // else: nothing new — skip the save entirely
+  }catch(e){ /* non-fatal — bad JSON or network hiccup, just skip this cycle */ }
+}
+
+// ================= image handling =================
+function resizeImageToDataUrl(file, maxSize=640, quality=0.8){
+  return new Promise((resolve, reject)=>{
+    const img = new Image(); const reader = new FileReader();
+    reader.onload = e => { img.onload = ()=>{
+      let {width, height} = img;
+      if(width > height){ if(width > maxSize){ height *= maxSize/width; width = maxSize; } }
+      else { if(height > maxSize){ width *= maxSize/height; height = maxSize; } }
+      const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    }; img.onerror = reject; img.src = e.target.result; };
+    reader.onerror = reject; reader.readAsDataURL(file);
+  });
+}
+
+// ================= state / navigation =================
+let state = { editingId:null, chattingId:null, pendingCover:null, activeTag:null };
+const els = {};
+['library','libGrid','libEmpty','newCardBtn','editor','editorBackBtn','editorTitle','chatScreen','chatBackBtn',
+ 'avatarPreview','avatarBtn','fileInput','bgPreview','bgBtn','bgClearBtn','bgFileInput','fName','fTagline','fTags','fLore','fOpening','saveCardBtn','deleteCardBtn',
+ 'chatAvatar','chatName','chatBg','chatSettingsBtn','log','suggestRow','textInput','sendBtn','panelBtn',
+ 'searchInput','tagRow','memoryModal','memoryContent','closeMemoryBtn',
+ 'panelModal','panelContent','closePanelBtn',
+ 'chatSettingsModal','csMemoryBtn','csExportBtn','csImportBtn','csImportFileInput'
+].forEach(id => els[id] = document.getElementById(id));
+
+function show(el){ el.style.display=''; } function hide(el){ el.style.display='none'; }
+
+function showLibrary(){ setActiveTab('library'); els.library.style.display='block'; document.getElementById('topbar').style.display='block';
+  els.editor.style.display='none'; els.chatScreen.style.display='none';
+  document.getElementById('messagesScreen').style.display='none'; document.getElementById('settingsScreen').style.display='none';
+  document.getElementById('bottomNav').style.display='flex'; }
+function showEditor(){ els.library.style.display='none'; document.getElementById('topbar').style.display='none';
+  els.editor.style.display='block'; els.chatScreen.style.display='none';
+  document.getElementById('messagesScreen').style.display='none'; document.getElementById('settingsScreen').style.display='none';
+  document.getElementById('bottomNav').style.display='none'; }
+function showChat(){ els.library.style.display='none'; document.getElementById('topbar').style.display='none';
+  els.editor.style.display='none'; els.chatScreen.style.display='flex';
+  document.getElementById('messagesScreen').style.display='none'; document.getElementById('settingsScreen').style.display='none';
+  document.getElementById('bottomNav').style.display='none'; }
+function showMessages(){ setActiveTab('messages'); els.library.style.display='none'; document.getElementById('topbar').style.display='none';
+  els.editor.style.display='none'; els.chatScreen.style.display='none';
+  document.getElementById('messagesScreen').style.display='block'; document.getElementById('settingsScreen').style.display='none';
+  document.getElementById('bottomNav').style.display='flex'; renderMessages(); }
+function showSettings(){ setActiveTab('settings'); els.library.style.display='none'; document.getElementById('topbar').style.display='none';
+  els.editor.style.display='none'; els.chatScreen.style.display='none';
+  document.getElementById('messagesScreen').style.display='none'; document.getElementById('settingsScreen').style.display='block';
+  document.getElementById('bottomNav').style.display='flex'; renderSettings(); }
+
+function setActiveTab(tab){
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+}
+document.querySelectorAll('.nav-item').forEach(btn=>{
+  btn.onclick = ()=>{
+    const tab = btn.dataset.tab;
+    if(tab==='library'){ renderLibrary(); showLibrary(); }
+    else if(tab==='messages'){ showMessages(); }
+    else if(tab==='settings'){ showSettings(); }
+    else if(tab==='new'){ openEditor(null); }
+  };
+});
+
+async function renderMessages(){
+  const index = await getIndex();
+  const rows = [];
+  for(const w of index){
+    const chat = await getChat(w.id);
+    if(chat.length>0) rows.push({world:w, chat});
+  }
+  rows.sort((a,b)=> (b.chat[b.chat.length-1]?.ts||0) - (a.chat[a.chat.length-1]?.ts||0));
+  const list = document.getElementById('msgList');
+  list.innerHTML = '';
+  document.getElementById('msgEmpty').classList.toggle('screen-hidden', rows.length>0);
+  rows.forEach(({world, chat})=>{
+    const last = chat[chat.length-1];
+    const row = document.createElement('div'); row.className = 'conv-row';
+    row.innerHTML = `
+      ${world.cover ? `<img class="conv-avatar" src="${world.cover}">` : `<div class="conv-avatar placeholder">${world.name.charAt(0)}</div>`}
+      <div class="conv-info">
+        <div class="conv-name">${escapeHtml(world.name)}</div>
+        <div class="conv-preview">${escapeHtml((last.role==='user'?'You: ':'') + last.text)}</div>
+      </div>`;
+    row.onclick = ()=> openStory(world.id);
+    list.appendChild(row);
+  });
+}
+
+async function getGeminiKey(){ return (await kvGet('wc_gemini_key')) || ''; }
+async function saveGeminiKey(key){ await kvSet('wc_gemini_key', key); }
+
+async function renderSettings(){
+  const key = await getGeminiKey();
+  const statusEl = document.getElementById('geminiKeyStatus');
+  document.getElementById('geminiKeyInput').value = key;
+  statusEl.textContent = key ? '✓ Key saved — stories will use Gemini.' : 'No key saved yet — stories won\'t work until you add one.';
+}
+document.getElementById('saveGeminiKeyBtn').onclick = async ()=>{
+  const val = document.getElementById('geminiKeyInput').value.trim();
+  await saveGeminiKey(val);
+  document.getElementById('geminiKeyStatus').textContent = val ? '✓ Key saved — stories will use Gemini.' : 'No key saved yet — stories won\'t work until you add one.';
+};
+document.getElementById('eraseAllBtn').onclick = async ()=>{
+  if(!confirm('Erase every world and conversation? This can\'t be undone.')) return;
+  const index = await getIndex();
+  for(const w of index) await deleteWorldData(w.id);
+  await saveIndex([]);
+  await renderLibrary(); showLibrary();
+};
+
+els.editorBackBtn.onclick = ()=>{ renderLibrary(); showLibrary(); };
+els.chatBackBtn.onclick = ()=>{ renderLibrary(); showLibrary(); };
+
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+function formatStoryText(s){
+  if(!s) return '';
+  // splits on "quoted speech" segments (straight or curly quotes) so spoken lines can be styled distinctly
+  const parts = s.split(/("(?:[^"\\]|\\.)*"|“[^”]*”)/g);
+  return parts.map(part=>{
+    if(part && ((part.startsWith('"') && part.endsWith('"') && part.length>=2) || (part.startsWith('“') && part.endsWith('”')))){
+      return `<span class="dialogue">${escapeHtml(part)}</span>`;
+    }
+    return escapeHtml(part);
+  }).join('');
+}
+
+// ---------- character panel: data model helpers ----------
+function mergePanelUpdate(panel, update){
+  if(!update || !update.categories || typeof update.categories !== 'object') return panel;
+  for(const [name, catUpdate] of Object.entries(update.categories)){
+    if(!name || !catUpdate || typeof catUpdate !== 'object') continue;
+    let cat = panel.categories[name];
+    if(!cat){
+      // brand-new category the AI decided it needed (e.g. "Skills & Abilities", "Titles") — infer its type from the action used
+      let type = catUpdate.kv ? 'kv' : (catUpdate.list_add || catUpdate.list_remove) ? 'list' : (typeof catUpdate.text === 'string') ? 'text' : null;
+      if(!type) continue;
+      cat = panel.categories[name] = { type, data: type==='kv' ? {} : type==='list' ? [] : '' };
+    }
+    if(cat.type==='kv' && catUpdate.kv && typeof catUpdate.kv==='object'){
+      for(const [k,v] of Object.entries(catUpdate.kv)){ if(v!==null && v!=='') cat.data[k] = String(v); }
+    }
+    if(cat.type==='list'){
+      if(Array.isArray(catUpdate.list_add)){
+        catUpdate.list_add.forEach(it=>{ it=String(it||'').trim(); if(it && !cat.data.includes(it)) cat.data.push(it); });
+      }
+      if(Array.isArray(catUpdate.list_remove)){
+        const rm = catUpdate.list_remove.map(x=>String(x||'').trim().toLowerCase());
+        cat.data = cat.data.filter(it=>!rm.includes(it.toLowerCase()));
+      }
+    }
+    if(cat.type==='text' && typeof catUpdate.text==='string' && catUpdate.text.trim()) cat.data = catUpdate.text.trim();
+  }
+  return panel;
+}
+function panelToText(panel){
+  return Object.entries(panel.categories).map(([name, cat])=>{
+    if(cat.type==='kv'){
+      const entries = Object.entries(cat.data);
+      return `${name}: ${entries.length ? entries.map(([k,v])=>`${k}: ${v}`).join(', ') : '(none yet)'}`;
+    }
+    if(cat.type==='list'){
+      return `${name}: ${cat.data.length ? cat.data.join(', ') : '(none yet)'}`;
+    }
+    return `${name}: ${cat.data || '(none yet)'}`;
+  }).join('\n');
+}
+function renderPanelSection(title, innerHtml){
+  return `<div class="panel-section"><div class="panel-sec-title">${title}</div>${innerHtml}</div>`;
+}
+function renderPanelHtml(panel){
+  const sections = Object.entries(panel.categories).map(([name, cat])=>{
+    let inner, isEmpty;
+    if(cat.type==='kv'){
+      const entries = Object.entries(cat.data);
+      isEmpty = entries.length === 0;
+      inner = entries.map(([k,v])=>`<div class="panel-row"><span class="panel-k">${escapeHtml(k)}</span><span class="panel-v">${escapeHtml(String(v))}</span></div>`).join('');
+    }else if(cat.type==='list'){
+      isEmpty = !cat.data || cat.data.length === 0;
+      inner = isEmpty ? '' : `<div class="panel-chips">${cat.data.map(it=>`<span class="panel-chip">${escapeHtml(it)}</span>`).join('')}</div>`;
+    }else{
+      isEmpty = !cat.data;
+      inner = isEmpty ? '' : `<div class="panel-status">${escapeHtml(cat.data)}</div>`;
+    }
+    if(isEmpty) return ''; // hide categories with nothing tracked yet — they'll appear once the story adds to them
+    return renderPanelSection(escapeHtml(name), inner);
+  }).join('');
+  return sections || `<div class="panel-empty">Nothing tracked yet — this fills in as the story continues.</div>`;
+}
+
+// lightweight markdown for the OOC "system" assistant: **bold** + "- " bullet lists + paragraphs
+function renderMarkdownLite(raw){
+  const escaped = escapeHtml(raw||'');
+  const bolded = escaped.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+  const lines = bolded.split('\n');
+  let html = ''; let inList = false;
+  for(const line of lines){
+    const t = line.trim();
+    if(/^[-•]\s+/.test(t)){
+      if(!inList){ html += '<ul>'; inList = true; }
+      html += `<li>${t.replace(/^[-•]\s+/, '')}</li>`;
+    }else{
+      if(inList){ html += '</ul>'; inList = false; }
+      if(t) html += `<p>${t}</p>`;
+    }
+  }
+  if(inList) html += '</ul>';
+  return html;
+}
+
+// ---------- library ----------
+async function renderTagRow(){
+  const index = await getIndex();
+  const allTags = new Set();
+  index.forEach(w => (w.tags||[]).forEach(t=>allTags.add(t)));
+  els.tagRow.innerHTML = '';
+  const chips = ['All', ...Array.from(allTags)];
+  chips.forEach(tag=>{
+    const c = document.createElement('div');
+    c.className = 'tag-chip' + ((tag==='All' && !state.activeTag) || tag===state.activeTag ? ' active' : '');
+    c.textContent = tag;
+    c.onclick = ()=>{ state.activeTag = tag==='All' ? null : tag; renderLibrary(); };
+    els.tagRow.appendChild(c);
+  });
+}
+
+async function renderLibrary(){
+  await renderTagRow();
+  const index = await getIndex();
+  const q = els.searchInput.value.trim().toLowerCase();
+  const filtered = index.filter(w=>{
+    if(state.activeTag && !(w.tags||[]).includes(state.activeTag)) return false;
+    if(q && !(w.name+w.tagline).toLowerCase().includes(q)) return false;
+    return true;
+  });
+  els.libGrid.innerHTML = '';
+  els.libEmpty.classList.toggle('screen-hidden', index.length>0);
+  for(const w of filtered){
+    const chat = await getChat(w.id);
+    const tile = document.createElement('div');
+    tile.className = 'world-card';
+    const chipsHtml = (w.tags||[]).slice(0,3).map(t=>`<span class="mini-chip">${escapeHtml(t)}</span>`).join('');
+    tile.innerHTML = `
+      <div class="cover-wrap ${w.cover?'':'placeholder'}">
+        ${w.cover ? `<img src="${w.cover}">` : (w.name||'?').charAt(0)}
+        <div class="cover-fade"></div>
+        <div class="msg-count"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg> ${chat.length}</div>
+      </div>
+      <div class="card-info">
+        <div class="card-name">${escapeHtml(w.name)}</div>
+        <div class="card-tag">${escapeHtml(w.tagline||'')}</div>
+        <div class="card-chips">${chipsHtml}</div>
+      </div>`;
+    tile.onclick = ()=> openStory(w.id);
+    els.libGrid.appendChild(tile);
+  }
+}
+els.searchInput.addEventListener('input', ()=> renderLibrary());
+els.newCardBtn.onclick = ()=> openEditor(null);
+
+// ---------- editor ----------
+function openEditor(worldOrNull){
+  state.editingId = worldOrNull ? worldOrNull.id : null;
+  state.pendingCover = worldOrNull ? worldOrNull.cover : null;
+  state.pendingBg = worldOrNull ? (worldOrNull.bg || null) : null;
+  els.editorTitle.textContent = worldOrNull ? 'Edit world' : 'New world';
+  els.fName.value = worldOrNull?.name || '';
+  els.fTagline.value = worldOrNull?.tagline || '';
+  els.fTags.value = (worldOrNull?.tags||[]).join(', ');
+  els.fLore.value = worldOrNull?.lore || '';
+  els.fOpening.value = worldOrNull?.opening || '';
+  els.avatarPreview.innerHTML = state.pendingCover
+    ? `<img src="${state.pendingCover}" style="width:100%;height:100%;object-fit:cover;">`
+    : ((worldOrNull?.name||'葉').charAt(0));
+  els.bgPreview.style.backgroundImage = state.pendingBg ? `url(${state.pendingBg})` : 'none';
+  els.bgClearBtn.classList.toggle('screen-hidden', !state.pendingBg);
+  els.deleteCardBtn.classList.toggle('screen-hidden', !worldOrNull);
+  showEditor();
+}
+els.avatarBtn.onclick = ()=> els.fileInput.click();
+els.fileInput.onchange = async ()=>{
+  const file = els.fileInput.files[0]; if(!file) return;
+  const dataUrl = await resizeImageToDataUrl(file);
+  state.pendingCover = dataUrl;
+  els.avatarPreview.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;">`;
+};
+els.bgBtn.onclick = ()=> els.bgFileInput.click();
+els.bgFileInput.onchange = async ()=>{
+  const file = els.bgFileInput.files[0]; if(!file) return;
+  const dataUrl = await resizeImageToDataUrl(file, 900, 0.75);
+  state.pendingBg = dataUrl;
+  els.bgPreview.style.backgroundImage = `url(${dataUrl})`;
+  els.bgClearBtn.classList.remove('screen-hidden');
+};
+els.bgClearBtn.onclick = ()=>{
+  state.pendingBg = null;
+  els.bgPreview.style.backgroundImage = 'none';
+  els.bgFileInput.value = '';
+  els.bgClearBtn.classList.add('screen-hidden');
+};
+els.saveCardBtn.onclick = async ()=>{
+  const name = els.fName.value.trim();
+  if(!name){ els.fName.focus(); return; }
+  const id = state.editingId || ('w'+Date.now());
+  const tags = els.fTags.value.split(',').map(t=>t.trim()).filter(Boolean);
+  const world = {
+    id, name, tagline: els.fTagline.value.trim(), tags,
+    lore: els.fLore.value.trim(),
+    opening: els.fOpening.value.trim() || `Narrate the player's arrival in ${name}. Set the scene in second person, 3-4 sentences, then end on a moment the player can respond to.`,
+    cover: state.pendingCover || null,
+    bg: state.pendingBg || null,
+  };
+  els.saveCardBtn.disabled = true; els.saveCardBtn.textContent = 'Saving...';
+  await saveWorld(world);
+  const index = await getIndex();
+  const idx = index.findIndex(w=>w.id===id);
+  const entry = {id, name, tagline:world.tagline, cover:world.cover, tags};
+  if(idx>-1) index[idx] = entry; else index.push(entry);
+  await saveIndex(index);
+  els.saveCardBtn.disabled = false; els.saveCardBtn.textContent = 'Save world';
+  await openStory(id);
+};
+els.deleteCardBtn.onclick = async ()=>{
+  if(!confirm('Delete this world and its whole story so far? This can\'t be undone.')) return;
+  const id = state.editingId;
+  await deleteWorldData(id);
+  const index = (await getIndex()).filter(w=>w.id!==id);
+  await saveIndex(index);
+  await renderLibrary(); showLibrary();
+};
+
+// ---------- story chat ----------
+function worldSystemPrompt(world, memory){
+  const memCtx = memory ? `\n\nWhat has happened in the story so far:\n${memory}` : '';
+  return `You are the narrator and every character of this story world.\n\nWorld & characters:\n${world.lore || '(no details given — invent something fitting the world name and tagline)'}\n\nRules: narrate in strict second person ("you") from the player's own point of view only. Describe only what the player can directly see, hear, or sense. Voice other characters only through visible dialogue and action, never their private thoughts. Keep replies immersive but concise — 2-5 sentences unless a scene truly calls for more. No stage directions in asterisks; weave narration and dialogue naturally.${memCtx}`;
+}
+
+async function openStory(id){
+  const world = await getWorld(id);
+  if(!world) return;
+  state.chattingId = id;
+  els.chatName.textContent = world.name;
+  els.chatBg.style.backgroundImage = (world.bg || world.cover) ? `url(${world.bg || world.cover})` : 'none';
+  if(world.cover){ els.chatAvatar.classList.remove('placeholder'); els.chatAvatar.innerHTML = `<img src="${world.cover}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`; }
+  else { els.chatAvatar.classList.add('placeholder'); els.chatAvatar.textContent = world.name.charAt(0); }
+  els.log.innerHTML = ''; els.suggestRow.innerHTML = '';
+  showChat();
+
+  let chat = await getChat(id);
+  if(chat.length === 0){
+    showTyping();
+    let text;
+    try{ text = await askAI(worldSystemPrompt(world, ''), world.opening); }
+    catch(err){
+      hideTyping();
+      const w = document.createElement('div'); w.className='warn'; w.textContent = '⚠️ ' + err.message;
+      els.log.appendChild(w);
+      const retry = document.createElement('button'); retry.className='warn';
+      retry.style.cssText='background:none;border:1px solid var(--line);color:var(--text);padding:8px 16px;border-radius:16px;cursor:pointer;';
+      retry.textContent = 'Retry'; retry.onclick = ()=> openStory(id);
+      els.log.appendChild(retry);
+      return;
+    }
+    hideTyping();
+    chat = [{role:'ai', text, ts:Date.now()}];
+    await saveChat(id, chat);
+  }
+  chat.forEach((m,i) => renderMsg(m, i===chat.length-1));
+  els.log.scrollTop = els.log.scrollHeight;
+}
+
+function renderMsg(m, isLast){
+  const wrap = document.createElement('div');
+  const kind = m.role==='user' ? 'user' : (m.role==='system' ? 'system' : 'ai');
+  wrap.className = 'msg ' + kind;
+  const label = kind==='system' ? `<div class="sys-label">⚙️ System</div>` : '';
+  const body = kind==='system' ? renderMarkdownLite(m.text) : formatStoryText(m.text);
+  wrap.innerHTML = `${label}<div class="bubble">${body}</div>`;
+  if((m.role==='ai' || m.role==='system') && isLast){
+    const actions = document.createElement('div'); actions.className='msg-actions';
+    let html = `<button title="Regenerate" id="regenBtn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v6h-6"/></svg>
+    </button>`;
+    if(m.role==='ai'){
+      html += `<button title="Continue" id="forwardBtn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 4 8 8-8 8"/><path d="M16 4v16"/></svg>
+    </button>`;
+    }
+    actions.innerHTML = html;
+    wrap.appendChild(actions);
+    setTimeout(()=>{
+      const b=document.getElementById('regenBtn'); if(b) b.onclick = regenerateLast;
+      const f=document.getElementById('forwardBtn'); if(f) f.onclick = continueForward;
+    }, 0);
+  }
+  els.log.appendChild(wrap);
+  els.log.scrollTop = els.log.scrollHeight;
+}
+
+function showTyping(){
+  const wrap = document.createElement('div'); wrap.className = 'msg ai typing'; wrap.id = 'typingIndicator';
+  wrap.innerHTML = `<div class="bubble"><span></span><span></span><span></span></div>`;
+  els.log.appendChild(wrap); els.log.scrollTop = els.log.scrollHeight;
+}
+function hideTyping(){ document.getElementById('typingIndicator')?.remove(); }
+
+els.chatSettingsBtn.onclick = ()=>{ els.chatSettingsModal.style.display = 'flex'; };
+els.chatSettingsModal.onclick = (e)=>{ if(e.target===els.chatSettingsModal) els.chatSettingsModal.style.display='none'; };
+
+els.csMemoryBtn.onclick = async ()=>{
+  els.chatSettingsModal.style.display = 'none';
+  const mem = await getMemory(state.chattingId);
+  els.memoryContent.textContent = mem || 'Nothing remembered yet — memory builds up as you play.';
+  els.memoryModal.style.display = 'flex';
+};
+els.closeMemoryBtn.onclick = ()=> els.memoryModal.style.display = 'none';
+els.memoryModal.onclick = (e)=>{ if(e.target===els.memoryModal) els.memoryModal.style.display='none'; };
+
+// ---------- export / import a world (download & continue later, on this device or another) ----------
+async function exportWorld(id){
+  const world = await getWorld(id);
+  if(!world) return;
+  const chat = await getChat(id);
+  const memory = await getMemory(id);
+  const panel = await getPanel(id);
+  const payload = { app:'worlds-export', version:1, exportedAt:new Date().toISOString(), world, chat, memory, panel };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (world.name||'world').trim().replace(/[^a-z0-9]+/gi,'_').toLowerCase() + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+els.csExportBtn.onclick = ()=>{ els.chatSettingsModal.style.display = 'none'; if(state.chattingId) exportWorld(state.chattingId); };
+
+async function importWorldFromFile(file){
+  let data;
+  try{ data = JSON.parse(await file.text()); }
+  catch(e){ alert('That file isn\'t a valid world backup.'); return; }
+  if(!data || !data.world || !data.world.name){ alert('That file isn\'t a valid world backup.'); return; }
+
+  const index = await getIndex();
+  let id = data.world.id;
+  if(!id || index.some(w=>w.id===id)) id = 'w'+Date.now(); // avoid clobbering an existing world
+  const world = {...data.world, id};
+
+  await saveWorld(world);
+  if(Array.isArray(data.chat)) await saveChat(id, data.chat);
+  if(typeof data.memory === 'string') await saveMemory(id, data.memory);
+  if(data.panel && typeof data.panel === 'object') await savePanel(id, data.panel);
+
+  index.push({id, name:world.name, tagline:world.tagline, cover:world.cover||null, tags:world.tags||[]});
+  await saveIndex(index);
+  await renderLibrary();
+  await openStory(id); // jump straight in — the story continues from where the file left off
+}
+els.csImportBtn.onclick = ()=>{ els.chatSettingsModal.style.display = 'none'; els.csImportFileInput.click(); };
+els.csImportFileInput.onchange = ()=>{
+  const file = els.csImportFileInput.files[0];
+  els.csImportFileInput.value = '';
+  if(file) importWorldFromFile(file);
+};
+
+let isSending = false;
+
+async function regenerateLast(){
+  if(isSending) return;
+  const world = await getWorld(state.chattingId);
+  let chat = await getChat(world.id);
+  const wasSystem = chat.length && chat[chat.length-1].role==='system';
+  if(chat.length && (chat[chat.length-1].role==='ai' || chat[chat.length-1].role==='system')) chat.pop();
+  els.log.lastElementChild?.remove();
+  await saveChat(world.id, chat);
+  if(wasSystem){
+    const lastUser = [...chat].reverse().find(m=>m.role==='user');
+    await systemReply(world, chat, lastUser ? lastUser.text : '');
+  }else{
+    await continueStory(world, chat);
+  }
+}
+
+async function continueForward(){
+  if(isSending) return;
+  const world = await getWorld(state.chattingId);
+  const chat = await getChat(world.id);
+  document.querySelectorAll('.msg-actions').forEach(a=>a.remove());
+  await continueStory(world, chat, 'forward');
+}
+
+async function continueStory(world, chat, mode){
+  isSending = true; els.sendBtn.disabled = true;
+  const memory = await getMemory(world.id);
+  const recentLog = chat.slice(-6).map(m => m.role==='user' ? `Player: ${m.text}` : `Story: ${m.text}`).join('\n');
+  showTyping();
+  let reply;
+  const instruction = mode === 'forward'
+    ? `Continue the story forward on your own — the player hasn't said or done anything new. Advance time, have a character act, or introduce a development, and end on a moment the player can react to.`
+    : `Continue the story naturally in response to what the player just did or said.`;
+  try{
+    reply = await askAI(worldSystemPrompt(world, memory), `Story so far:\n${recentLog}\n\n${instruction}`);
+  }catch(err){
+    hideTyping();
+    const w = document.createElement('div'); w.className = 'warn'; w.textContent = '⚠️ ' + err.message;
+    els.log.appendChild(w); els.log.scrollTop = els.log.scrollHeight;
+    els.sendBtn.disabled = false; isSending = false;
+    return;
+  }
+  hideTyping();
+  document.querySelectorAll('.msg-actions').forEach(a=>a.remove());
+  chat.push({role:'ai', text:reply, ts:Date.now()});
+  renderMsg({role:'ai', text:reply}, true);
+  await saveChat(world.id, chat);
+  els.sendBtn.disabled = false; isSending = false;
+  updateMemory(world);
+  updatePanel(world);
+}
+
+// ---------- "system" — an out-of-character assistant the player can summon by name ----------
+function isSystemTrigger(text){ return /\bsystem\s+bro\b/i.test(text); }
+
+async function systemReply(world, chat, userText){
+  isSending = true; els.sendBtn.disabled = true;
+  const memory = await getMemory(world.id);
+  const recentLog = chat.slice(-6).map(m =>
+    m.role==='user' ? `Player: ${m.text}` : (m.role==='system' ? `System: ${m.text}` : `Story: ${m.text}`)
+  ).join('\n');
+  showTyping();
+  const sysPrompt = `You are "the System" — a casual, friendly out-of-character assistant built into this interactive-fiction app. The player just broke the fourth wall to talk to you directly instead of acting in the story. Reply out of character, never as any story character or narrator.
+
+Format the reply like this, using **bold** for labels and lines starting with "- " for bullets:
+1. One short casual greeting line (e.g. "Yo! What's up?").
+2. One short paragraph recapping where the player currently is and what's at stake, based on the log below.
+3. A "**Current Situation:**" bullet list — one bullet per relevant character or goal, each starting with a bolded name/label followed by a very short status.
+4. Directly answer whatever the player just said or asked, in one or two short lines.
+5. If there's nothing more to add, end with "What's the move?"
+
+Keep it short, punchy, and casual. Never slip into full story narration — this is a status/chat reply, not a scene.`;
+  let reply;
+  try{
+    reply = await askAI(sysPrompt, `World: ${world.name}\n\nMemory:\n${memory || '(none yet)'}\n\nRecent log:\n${recentLog}\n\nPlayer just said: "${userText}"`);
+  }catch(err){
+    hideTyping();
+    const w = document.createElement('div'); w.className = 'warn'; w.textContent = '⚠️ ' + err.message;
+    els.log.appendChild(w); els.log.scrollTop = els.log.scrollHeight;
+    els.sendBtn.disabled = false; isSending = false;
+    return;
+  }
+  hideTyping();
+  document.querySelectorAll('.msg-actions').forEach(a=>a.remove());
+  chat.push({role:'system', text:reply, ts:Date.now()});
+  renderMsg({role:'system', text:reply}, true);
+  await saveChat(world.id, chat);
+  els.sendBtn.disabled = false; isSending = false;
+  // OOC chat doesn't feed the story memory — it's a side-channel, not part of the narrative
+}
+
+async function sendMessage(){
+  if(isSending) return;
+  const val = els.textInput.value.trim();
+  if(!val) return;
+  const world = await getWorld(state.chattingId);
+  els.textInput.value = '';
+  els.suggestRow.innerHTML = '';
+  let chat = await getChat(world.id);
+  document.querySelectorAll('.msg-actions').forEach(a=>a.remove());
+  chat.push({role:'user', text:val, ts:Date.now()});
+  renderMsg({role:'user', text:val}, false);
+  await saveChat(world.id, chat);
+  if(isSystemTrigger(val)) await systemReply(world, chat, val);
+  else await continueStory(world, chat);
+}
+els.sendBtn.onclick = sendMessage;
+els.textInput.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); sendMessage(); } });
+
+async function openPanelModal(){
+  if(!state.chattingId) return;
+  const panel = await getPanel(state.chattingId);
+  els.panelContent.innerHTML = renderPanelHtml(panel);
+  els.panelModal.style.display = 'flex';
+}
+els.panelBtn.onclick = openPanelModal;
+els.closePanelBtn.onclick = ()=> els.panelModal.style.display = 'none';
+els.panelModal.onclick = (e)=>{ if(e.target===els.panelModal) els.panelModal.style.display='none'; };
+
+// ---------- boot ----------
+(async ()=>{ await renderLibrary(); showLibrary(); setActiveTab('library'); })();
+</script>
+</body>
+</html>
