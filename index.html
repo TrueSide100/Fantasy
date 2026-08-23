@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Worlds</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=Playfair+Display:ital,wght@0,600;0,700;1,500;1,600&family=EB+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0D0F13; --bg-elev:#161922; --panel:rgba(10,12,16,0.62); --panel-solid:#181B22;
+    --text:#F2F1ED; --text-dim:#9A9FAC; --line:rgba(255,255,255,0.09);
+    --amber:#FFFFFF; --rose:#E0637A;
+    --diary-wax:#7D3128;
+    --paper-a:#F2EAD8; --paper-b:#E5D9BE;
+    --letter-ink:#2E2024; --letter-ink-soft:#6E4A50; --letter-line:rgba(59,42,46,0.16);
+    --burgundy:#5B2430; --burgundy-soft:rgba(91,36,48,0.08); --burgundy-line:rgba(139,85,96,0.42);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html{-webkit-text-size-adjust:100%; text-size-adjust:100%;}
+  html,body{margin:0;height:100%; overflow:hidden; overscroll-behavior:none; touch-action:manipulation; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;}
+  img,video{-webkit-touch-callout:none; -webkit-user-drag:none; user-drag:none;}
+  input, textarea{-webkit-user-select:text; user-select:text; -webkit-touch-callout:none;}
+  body{background:var(--bg); font-family:'Inter',sans-serif; color:var(--text); display:flex; justify-content:center; height:100%; height:100dvh;}
+  #app{width:100%; max-width:480px; height:100%; display:flex; flex-direction:column; position:relative; background:var(--bg); overflow:hidden;}
+
+  /* ---------- library topbar ---------- */
+  #homeScreen{flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; display:none;}
+  #topbar{padding:26px 16px 18px; position:relative; background:linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 100%);}
+  #topbar::after{content:''; position:absolute; left:16px; right:16px; bottom:0; height:1px; background:linear-gradient(90deg, transparent, var(--line) 15%, var(--line) 85%, transparent);}
+  .topbar-head{display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin:0 0 18px; padding:0 6px; position:relative;}
+  #topbarTitle{font-family:'Fraunces',serif; font-weight:700; font-size:24px; letter-spacing:.015em; color:var(--text); display:flex; align-items:center; gap:9px;}
+  #topbarTitle .title-icon{flex-shrink:0; color:var(--amber);}
+  #worldCount{flex-shrink:0; font-size:11.5px; font-weight:700; color:var(--text-dim); letter-spacing:.03em; background:rgba(255,255,255,0.045); border:1px solid var(--line); padding:6px 12px; border-radius:999px;}
+  #topbar .row1{display:flex; align-items:center; gap:10px; position:relative;}
+  #searchBox{flex:1; display:flex; align-items:center; gap:9px; background:var(--bg-elev); border:1px solid var(--line); border-radius:999px; padding:12px 16px; box-shadow:inset 0 1px 0 rgba(255,255,255,0.04), 0 4px 12px rgba(0,0,0,0.2); transition:border-color .18s ease, box-shadow .18s ease;}
+  #searchBox:focus-within{border-color:rgba(255,255,255,0.32); box-shadow:inset 0 1px 0 rgba(255,255,255,0.04), 0 0 0 3px rgba(255,255,255,0.05);}
+  #searchBox svg{flex-shrink:0; opacity:.5; transition:opacity .18s ease;}
+  #searchBox:focus-within svg{opacity:.85;}
+  #searchInput{border:none; background:none; outline:none; color:var(--text); font-family:inherit; font-size:14px; width:100%;}
+  #searchInput::placeholder{color:var(--text-dim);}
+  #library{padding:32px 15px 90px;}
+  .screen-hidden{display:none !important;}
+  #libEmpty{padding:70px 20px; text-align:center; color:var(--text-dim);}
+  #libEmpty .display{font-family:'Fraunces',serif; font-size:18px; color:var(--text); margin-bottom:6px; font-weight:600;}
+  #libGrid{display:grid; grid-template-columns:1fr 1fr; row-gap:22px; column-gap:14px; align-items:start;}
+  .world-card{background:#12141a; border-radius:16px; overflow:hidden; cursor:pointer; border:1px solid var(--line); display:flex; flex-direction:column; box-shadow:0 4px 14px rgba(0,0,0,0.25); transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease;}
+  .world-card:active{transform:scale(0.965); box-shadow:0 2px 8px rgba(0,0,0,0.3);}
+  .cover-wrap{position:relative; height:200px; flex-shrink:0; overflow:hidden; background:linear-gradient(160deg,#22262f,#14161b);}
+  .cover-wrap img{width:100%;height:100%;object-fit:cover; object-position:center; display:block; transition:transform .35s ease; animation:coverIn .3s ease both;}
+  @keyframes coverIn{from{opacity:0;} to{opacity:1;}}
+  .screen-in{animation:screenFadeIn .32s cubic-bezier(.22,.61,.36,1) both;}
+  @keyframes screenFadeIn{from{opacity:0;} to{opacity:1;}}
+  .world-card:active .cover-wrap img{transform:scale(1.04);}
+  .cover-wrap.placeholder{display:flex;align-items:center;justify-content:center; font-family:'Fraunces',serif; font-size:34px; color:var(--text-dim); background:radial-gradient(circle at 30% 20%, #262b35, #14161b 75%);}
+  .cover-fade{position:absolute; left:0; right:-1px; bottom:-1px; height:85%; background:linear-gradient(to top, #12141a 0%, rgba(18,20,26,0.94) 18%, rgba(18,20,26,0.6) 45%, rgba(18,20,26,0.15) 75%, transparent 100%); pointer-events:none;}
+  .msg-count{position:absolute; left:9px; bottom:9px; display:flex; align-items:center; gap:4px; font-size:10.5px; font-weight:700; color:#F2F1ED; background:rgba(0,0,0,0.4); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); padding:4px 8px 4px 7px; border-radius:20px; letter-spacing:.01em;}
+  .msg-count svg{opacity:.9;}
+  .card-info{padding:11px 12px 14px; flex:1; display:flex; flex-direction:column; justify-content:center; min-height:52px; background:linear-gradient(to bottom, #12141a 0%, #0a0b0e 100%);}
+  .card-name{font-family:'Fraunces',serif; font-weight:600; font-size:14.5px; color:var(--text); line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
+
+  /* ---------- bottom nav ---------- */
+  #bottomNav{position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:480px; display:flex; align-items:center; justify-content:space-around; background:rgba(22,25,32,0.94); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-top:1px solid rgba(255,255,255,0.09); border-radius:22px 22px 0 0; padding:10px 12px calc(10px + env(safe-area-inset-bottom)); z-index:15; box-shadow:0 -14px 30px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04);}
+  #bottomNav::before{content:''; position:absolute; left:0; right:0; bottom:100%; height:40px; background:linear-gradient(to top, rgba(13,15,19,0.55), transparent); pointer-events:none;}
+  .nav-item{position:relative; background:none; border:none; display:flex; flex-direction:column; align-items:center; gap:5px; color:var(--text-dim); font-size:10px; font-weight:600; letter-spacing:.01em; cursor:pointer; padding:8px 12px; flex:1; border-radius:16px; transition:color .18s ease, background .18s ease;}
+  .nav-item svg{opacity:.65; transition:opacity .18s ease, transform .15s ease;}
+  .nav-item:active svg{transform:scale(0.88);}
+  .nav-item.active{color:var(--text); font-weight:700;}
+  .nav-item.active:not(.plus){background:rgba(255,255,255,0.08); box-shadow:inset 0 1px 0 rgba(255,255,255,0.06);}
+  .nav-item.active svg{opacity:1;}
+  .nav-item.plus{margin-top:-32px; padding-top:0;}
+  .nav-item.plus .plus-circle{position:relative; width:56px;height:56px;border-radius:50%; background:radial-gradient(circle at 32% 28%, #FFFFFF 0%, #EDEAE0 55%, #DCD8CA 100%); display:flex; align-items:center; justify-content:center; margin-bottom:4px; box-shadow:0 10px 24px rgba(255,255,255,0.28), 0 4px 10px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.9), inset 0 -3px 6px rgba(0,0,0,0.08); border:4px solid rgba(22,25,32,0.94); transition:transform .12s ease, box-shadow .12s ease;}
+  .nav-item.plus .plus-circle::after{content:''; position:absolute; inset:-9px; border-radius:50%; border:1px solid rgba(255,255,255,0.14); pointer-events:none;}
+  .nav-item.plus:active .plus-circle{transform:scale(0.91); box-shadow:0 4px 14px rgba(255,255,255,0.2), 0 2px 6px rgba(0,0,0,0.35), inset 0 1px 1px rgba(255,255,255,0.9);}
+  .nav-item.plus.active{color:var(--text-dim);}
+  #messagesScreen, #settingsScreen, #usageScreen{padding-bottom:160px !important;}
+  #library{padding-bottom:160px !important;}
+
+  /* ---------- editor ---------- */
+  #editor{flex:1; padding:30px 20px 100px; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; display:none;}
+  #editor.opening{animation:editorIn .4s ease-out both;}
+  @keyframes editorIn{from{transform:translateY(60px);} to{transform:translateY(0);}}
+  #editor .backRow{display:flex; align-items:center; justify-content:space-between; gap:10px; margin:0 -20px 30px; padding:0 30px;}
+  #editor .backRow button{background:none; border:1px solid var(--line); color:var(--text); font-size:12px; padding:7px 12px; border-radius:20px; cursor:pointer;}
+  #editor .backRow h2{margin:0; font-family:'Fraunces',serif; font-size:21px; font-weight:600;}
+  #editorCloseBtn{width:34px; height:34px; padding:0 !important; display:flex; align-items:center; justify-content:center; font-size:22px !important; line-height:1; border-radius:50% !important; border:none !important;}
+  .panel{background:var(--panel-solid); border:1px solid var(--line); border-radius:16px; padding:18px 16px 20px;}
+  .field{margin-bottom:30px;}
+  .field label{display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-dim); margin-bottom:10px;}
+  .field input[type=text], .field textarea{width:100%; border:1px solid var(--line); border-radius:10px; background:var(--bg-elev); font-family:'Inter',sans-serif; font-size:14.5px; color:var(--text); padding:14px 12px; resize:vertical;}
+  .field textarea{min-height:130px; line-height:1.5; overflow-y:hidden;}
+  .field input:focus, .field textarea:focus{outline:none; border-color:var(--amber);}
+  .field textarea.locked{background:rgba(255,255,255,0.02); color:var(--text-dim); resize:none; cursor:not-allowed;}
+  .field textarea.locked:focus{border-color:var(--line);}
+  #editorLockNote{display:flex; gap:8px; font-size:12.5px; line-height:1.5; color:var(--text-dim); background:rgba(255,255,255,0.04); border:1px solid var(--line); border-radius:10px; padding:11px 12px; margin-bottom:16px;}
+  #uploadsRow{display:flex; align-items:flex-start; gap:14px; margin-bottom:30px;}
+  #avatarRow, #bgRow{flex:1; display:flex; flex-direction:column; align-items:center; gap:10px;}
+  #avatarPreview{width:100%;aspect-ratio:3/4;height:auto;border-radius:10px; object-fit:cover; background:var(--bg-elev); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; color:var(--text-dim); font-size:26px; font-family:'Fraunces',serif; flex-shrink:0; overflow:hidden; cursor:pointer;}
+  #bgPreview{width:100%;aspect-ratio:3/4;height:auto;border-radius:10px; background:var(--bg-elev) center/cover no-repeat; border:1px solid var(--line); flex-shrink:0; cursor:pointer;}
+  .upload-caption{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-dim);}
+  #bgClearBtn{width:100%; background:none; border:1px solid rgba(224,99,122,0.4); color:var(--rose); border-radius:20px; padding:9px 10px; font-size:12px; cursor:pointer;}
+  #saveCardBtn{width:100%; margin-top:6px; background:var(--amber); color:#1A1204; border:none; border-radius:12px; padding:14px; font-family:'Inter',sans-serif; font-weight:700; font-size:15px; cursor:pointer;}
+  #deleteCardBtn{width:100%; margin-top:10px; background:none; color:var(--rose); border:1px solid rgba(224,99,122,0.4); border-radius:12px; padding:12px; font-size:13px; cursor:pointer;}
+
+  /* ---------- chat ---------- */
+  #chatScreen{display:none; flex-direction:column; position:fixed; inset:0; max-width:480px; margin:0 auto; z-index:10;
+    background: linear-gradient(170deg, var(--paper-a) 0%, var(--paper-b) 100%);}
+  #chatBg{position:fixed; top:0; left:0; right:0; max-width:480px; margin:0 auto; background-size:cover; background-position:center; z-index:0;
+    /* ROOT CAUSE #1 (the zoom): `inset:0` on a fixed element sizes its height to
+       Chrome's DYNAMIC visible viewport, which genuinely shrinks/grows as the address
+       bar shows/hides while scrolling — the `background-size:cover` image rescaled to
+       match, which looked like a zoom in/out. Needs a viewport unit that doesn't
+       track that animation.
+       ROOT CAUSE #2 (the up/down drift, from the first attempted fix): `svh` ("small
+       viewport height") is static, but it's sized to the SMALLEST possible screen —
+       address bar always assumed visible. So the moment the real address bar actually
+       hid and the true screen grew past that fixed-size box, a gap opened up at the
+       bottom of the image; that gap opening and closing as you scrolled is what read
+       as the image "moving." Fix: use `lvh` ("large viewport height") instead — same
+       static, non-animating unit, but sized to the LARGEST possible screen (address
+       bar assumed hidden). The box is now always at least as tall as the screen can
+       ever get, so there's never a gap to open, and it still never changes value
+       mid-scroll. `100vh` stays as an unsupported-browser fallback (older WebViews);
+       it's overridden by the `lvh` rule wherever available. */
+    height:100vh; height:100lvh;
+    /* Forces #chatBg onto its own persistent GPU compositing layer, independent of
+       #chatBody's scrolling layer below — extra insurance against any layer-level
+       resize some Android WebViews still attempt. */
+    transform:translateZ(0); -webkit-transform:translateZ(0); backface-visibility:hidden; -webkit-backface-visibility:hidden; will-change:transform;}
+  #chatBg::after{content:''; position:absolute; inset:0; background:linear-gradient(to bottom, rgba(13,15,19,0.55) 0%, rgba(13,15,19,0.3) 22%, rgba(13,15,19,0.3) 78%, rgba(13,15,19,0.55) 100%);}
+  #chatBody{flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; touch-action:pan-y; display:flex; flex-direction:column; position:relative; z-index:2; scrollbar-width:none;}
+  #chatBody::-webkit-scrollbar{display:none;}
+  #chatHeader{display:flex; align-items:center; gap:10px; position:fixed; top:calc(10px + env(safe-area-inset-top)); left:14px; right:14px; max-width:452px; margin:0 auto; z-index:6; padding:6px 8px;
+    transform:translateZ(0); -webkit-transform:translateZ(0); backface-visibility:hidden; -webkit-backface-visibility:hidden; will-change:transform;}
+  #chatHeader button.iconbtn{background:none; border:none; color:#FFFFFF; width:40px;height:40px; border-radius:11px; cursor:pointer; display:flex;align-items:center;justify-content:center; flex-shrink:0; transition:background .15s;}
+  #chatHeader button.iconbtn:active{background:rgba(255,255,255,0.15);}
+  #chatSettingsBtn{margin-left:auto;}
+  #chatTitleWrap{display:flex; align-items:center; gap:8px; background: rgba(250,244,230,0.85); border-radius:20px; padding:5px 14px 5px 5px; cursor:pointer; min-width:0; flex:1;}
+  #chatAvatar{width:28px;height:28px;border-radius:50%; object-fit:cover; background:var(--burgundy); flex-shrink:0;}
+  #chatAvatar.placeholder{display:flex;align-items:center;justify-content:center; font-family:'Fraunces',serif; color:var(--paper-a); font-size:12.5px;}
+  #chatName{flex:1; min-width:0; font-size:13.5px; font-weight:700; letter-spacing:.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#1A1204;}
+
+  #log{flex:1; padding:calc(env(safe-area-inset-top) + 84px) 14px 130px; display:flex; flex-direction:column; gap:24px; position:relative; scroll-padding-top:12px;}
+  .msg{max-width:92%; animation:msgIn .25s ease both;}
+  @keyframes msgIn{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+  .msg.user{align-self:flex-end; max-width:80%;}
+  .bubble{padding:12px 16px; border-radius:8px; font-size:16px; line-height:1.5; box-shadow:0 6px 16px rgba(59,42,46,0.12); font-family:'Inter', sans-serif; font-weight:400;}
+  .msg.ai .bubble .dialogue{font-weight:400; color:#F5F3EE;}
+  .msg.ai .bubble{background:rgba(0,0,0,0.7); color:#9A9FAC; box-shadow:0 6px 18px rgba(0,0,0,0.25); border-bottom-left-radius:4px;}
+  .msg.user .bubble{background:rgba(255,251,240,0.8); color:#2A1F22; font-weight:400; border-bottom-right-radius:4px; box-shadow:0 6px 18px rgba(0,0,0,0.25);}
+  .msg.system .bubble{background:rgba(0,0,0,0.7); color:#F5F3EE; box-shadow:0 6px 18px rgba(0,0,0,0.25); border-bottom-left-radius:4px;}
+  .sys-label{font-size:10.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--rose); margin:0 4px 6px;}
+  /* Merged "system bro" tools — two semi-square tiles inside the System bubble itself
+     (Scheduled Events / Inventory), each expanding its own panel in place below the
+     tiles, all inside the one bubble rather than as separate floating boxes. */
+  .sys-tools-wrap{margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.1);}
+  .sys-tools{display:flex; gap:10px;}
+  .sys-tool-tile{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:7px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:16px; padding:16px 8px; cursor:pointer; transition:background .15s, border-color .15s; text-align:center; color:#F5F3EE;}
+  .sys-tool-tile:active{background:rgba(255,255,255,0.13);}
+  .sys-tool-tile.active{border-color:var(--rose); background:rgba(224,99,122,0.16);}
+  .sys-tool-tile:disabled{opacity:.6; cursor:default;}
+  .sys-tool-tile svg{flex-shrink:0; opacity:.85; color:var(--rose);}
+  .sys-tool-tile span{font-size:10.5px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;}
+  .sys-tool-body{display:none;}
+  .sys-tool-body.open{display:block; margin-top:12px; animation:sysToolBodyIn .18s ease both;}
+  @keyframes sysToolBodyIn{from{opacity:0; transform:translateY(-4px);} to{opacity:1; transform:translateY(0);}}
+  .sys-inv-title{font-size:10.5px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--rose); margin-bottom:10px;}
+  .sys-inv-list{display:flex; flex-direction:column; gap:6px;}
+  .sys-inv-item{display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); color:#F5F3EE; padding:9px 11px; border-radius:9px; font-size:14px; text-align:left; cursor:pointer; transition:background .15s;}
+  .sys-inv-item:active{background:rgba(255,60,60,0.22);}
+  .sys-inv-item svg{flex-shrink:0; opacity:.55; color:var(--rose);}
+  .sys-inv-label{overflow-wrap:break-word; word-break:break-word;}
+  .sys-inv-status{font-weight:400; font-style:italic; opacity:.65; margin-left:6px; font-size:12.5px;}
+  .sys-inv-empty{font-size:13px; color:rgba(245,243,238,0.55); font-style:italic; padding-bottom:8px;}
+  /* A Scheduled Events entry can never be removed (tapped or otherwise) — once its day has
+     come and gone it simply dims in place instead, so the sheet keeps a permanent, at-a-glance
+     record of what's already happened vs what's still ahead. */
+  .sys-inv-item.is-sched{cursor:default;}
+  .sys-inv-item.is-sched:active{background:rgba(255,255,255,0.06);}
+  .sys-inv-item.is-past{opacity:.4;}
+  .sys-sched-form{display:flex; flex-direction:column; gap:8px;}
+  .sys-sched-row{display:flex; gap:8px;}
+  .sys-sched-row input[type=number]{width:64px; flex-shrink:0; -moz-appearance:textfield;}
+  .sys-sched-row input[type=number]::-webkit-outer-spin-button, .sys-sched-row input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none; margin:0;}
+  .sys-sched-form input{background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#F5F3EE; border-radius:9px; padding:10px 11px; font-size:14px; font-family:'Inter',sans-serif; min-width:0;}
+  .sys-sched-row input[type=text]{flex:1;}
+  .sys-sched-form input::placeholder{color:rgba(245,243,238,0.4);}
+  .sys-sched-form input:focus{outline:none; border-color:var(--rose);}
+  .sys-sched-hint{font-size:11px; color:rgba(245,243,238,0.5); font-style:italic;}
+  .sys-sched-hint.is-error{color:#e08a8a; font-style:normal; font-weight:600;}
+  .sys-sched-hint.is-notice{color:#E8C77E; font-style:normal; font-weight:600;}
+  .sys-sched-btn{background:var(--rose); color:#2A1F22; border:none; border-radius:9px; padding:11px; font-weight:800; font-size:13px; letter-spacing:.02em; cursor:pointer;}
+  .sys-sched-btn:disabled{opacity:.55; cursor:default;}
+  .sys-sched-confirm{font-size:13.5px; line-height:1.55; color:#F5F3EE;}
+  .sys-sched-confirm b{color:var(--rose);}
+  .bubble p{margin:0 0 8px;}
+  .bubble p:last-child{margin-bottom:0;}
+  .bubble ul{margin:2px 0 10px; padding-left:18px;}
+  .bubble ul:last-child{margin-bottom:0;}
+  .bubble li{margin-bottom:4px;}
+  .bubble b{font-weight:700;}
+  .msg-media{display:block; width:100%; max-width:260px; border-radius:8px; margin-bottom:6px;}
+  .msg-actions{display:flex; gap:6px; padding:18px 2px 0; align-items:center;}
+  .msg-actions button{background:rgba(20,18,16,0.85); border:1px solid transparent; color:#F5F3EE; cursor:pointer; padding:8px; border-radius:8px; display:flex; align-items:center; transition:background .15s, color .15s;}
+  .msg-actions button:active{color:#F5F3EE; background:rgba(20,18,16,1);}
+
+  /* ---------- message long-press menu (old-paper, matches the letter of records) ---------- */
+  #msgCtxMenu{
+    position:fixed; z-index:30;
+    background: rgba(250,244,230,0.98);
+    border:1px solid rgba(59,42,46,0.18); border-radius:10px; padding:6px;
+    box-shadow:0 20px 50px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.25), inset 0 0 0 1px rgba(59,42,46,0.06);
+    display:none; flex-direction:column; min-width:150px; opacity:0;
+    transform:scale(0.97) translateY(3px); transform-origin:top left;
+    transition:opacity .32s ease, transform .32s ease; overflow:hidden;
+  }
+  #msgCtxMenu::before{
+    content:''; position:absolute; inset:0; pointer-events:none; opacity:.3; mix-blend-mode:multiply;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
+  }
+  #msgCtxMenu.open{opacity:1; transform:scale(1) translateY(0);}
+  #msgCtxMenu button{position:relative; z-index:1; background:none; border:none; color:var(--letter-ink); text-align:left; padding:11px 13px; font-family:'EB Garamond',serif; font-weight:600; font-size:15px; letter-spacing:.02em; cursor:pointer; border-radius:6px; display:flex; align-items:center; gap:9px; transition:background .12s ease;}
+  #msgCtxMenu button:active{background:rgba(59,42,46,0.1);}
+  #msgCtxMenu button.danger{color:var(--diary-wax);}
+  #msgCtxMenu button + button{margin-top:1px; border-top:1px solid var(--letter-line);}
+  #msgCtxOverlay{position:fixed; inset:0; z-index:29; display:none; background:rgba(0,0,0,0); transition:background .32s ease; pointer-events:none;}
+  #msgCtxOverlay.open{background:rgba(0,0,0,0.15); pointer-events:auto;}
+
+  /* ---------- library card long-press menu ---------- */
+  #cardCtxMenu{
+    position:fixed; z-index:30;
+    background: rgba(24,27,34,0.86);
+    -webkit-backdrop-filter: blur(22px) saturate(160%);
+    backdrop-filter: blur(22px) saturate(160%);
+    border:1px solid rgba(255,255,255,0.1); border-radius:18px; padding:7px;
+    box-shadow:0 24px 60px rgba(0,0,0,0.55), 0 4px 14px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05);
+    display:none; flex-direction:column; min-width:196px; opacity:0;
+    transform:scale(0.94) translateY(4px); transform-origin:top left;
+    transition:opacity .22s cubic-bezier(.2,.8,.2,1), transform .22s cubic-bezier(.2,.8,.2,1);
+  }
+  #cardCtxMenu.open{opacity:1; transform:scale(1) translateY(0);}
+  #cardCtxMenu button{
+    background:none; border:none; color:var(--text); text-align:left;
+    padding:9px 10px; font-family:'Inter',sans-serif; font-weight:600; font-size:14.5px;
+    letter-spacing:.01em; cursor:pointer; border-radius:11px;
+    display:flex; align-items:center; gap:11px;
+    transition:background .15s ease, transform .1s ease;
+  }
+  #cardCtxMenu button:active{background:rgba(255,255,255,0.09); transform:scale(0.98);}
+  #cardCtxMenu .ctx-icon{
+    width:30px; height:30px; border-radius:9px; flex:none;
+    display:flex; align-items:center; justify-content:center;
+    background:rgba(255,255,255,0.06); color:var(--text-dim);
+  }
+  #cardCtxMenu button#cardCtxDownload .ctx-icon{background:rgba(122,162,255,0.14); color:#8FB0FF;}
+  #cardCtxMenu button#cardCtxImport .ctx-icon{background:rgba(154,138,255,0.14); color:#B4A6FF;}
+  #cardCtxMenu button.danger{color:var(--rose);}
+  #cardCtxMenu button.danger .ctx-icon{background:rgba(224,99,122,0.14); color:var(--rose);}
+  #cardCtxMenu button + button{margin-top:2px;}
+  #cardCtxMenu .ctx-divider{height:1px; margin:5px 8px; background:rgba(255,255,255,0.08);}
+  #cardCtxOverlay{position:fixed; inset:0; z-index:29; display:none; background:rgba(0,0,0,0); transition:background .28s ease; pointer-events:none;}
+  #cardCtxOverlay.open{background:rgba(0,0,0,0.4); -webkit-backdrop-filter:blur(1px); backdrop-filter:blur(1px); pointer-events:auto;}
+
+  /* ---------- media attach drawer (long-press send) ---------- */
+  #mediaDrawerOverlay{position:fixed; inset:0; z-index:39; background:rgba(0,0,0,0.4); display:none;}
+  #mediaDrawer{position:fixed; left:0; right:0; bottom:0; max-width:480px; margin:0 auto; z-index:40; background: rgba(250,244,230,0.98); border-radius:20px 20px 0 0; padding:8px 10px calc(18px + env(safe-area-inset-bottom)); box-shadow:0 -12px 40px rgba(0,0,0,0.3); transform:translateY(100%); transition:transform .22s ease;}
+  #mediaDrawer.open{transform:translateY(0);}
+  #mediaDrawer .drawer-handle{width:38px; height:4px; border-radius:3px; background:rgba(0,0,0,0.15); margin:4px auto 10px;}
+  #mediaDrawer .drawer-title{font-family:'Inter',sans-serif; font-size:12px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--letter-ink-soft); padding:0 6px 6px;}
+  #mediaDrawer button{width:100%; display:flex; align-items:center; gap:12px; background:none; border:none; border-radius:12px; color:var(--letter-ink); text-align:left; padding:13px 10px; font-family:'Inter',sans-serif; font-size:14.5px; font-weight:600; cursor:pointer; transition:background .12s;}
+  #mediaDrawer button:active{background:rgba(0,0,0,0.06);}
+  #addDrawerOverlay{position:fixed; inset:0; z-index:39; background:rgba(0,0,0,0.55); backdrop-filter:blur(2px); display:none;}
+  #addDrawer{position:fixed; left:50%; top:50%; width:calc(100% - 64px); max-width:330px; z-index:40; background:linear-gradient(165deg, #1E212B 0%, var(--panel-solid) 100%); border:1px solid var(--line); border-radius:22px; padding:28px 20px 22px; box-shadow:0 24px 60px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05); transform:translate(-50%, -50%) scale(0.92); opacity:0; pointer-events:none; transition:transform .2s cubic-bezier(.2,.9,.3,1.2), opacity .18s ease; text-align:center;}
+  #addDrawer.open{transform:translate(-50%, -50%) scale(1); opacity:1; pointer-events:auto;}
+  #addDrawer .drawer-eyebrow{font-family:'Inter',sans-serif; font-size:10px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:var(--text-dim); margin-bottom:7px;}
+  #addDrawer .drawer-title{font-family:'Fraunces',serif; font-weight:600; font-size:21px; letter-spacing:-.01em; color:var(--text); padding:0 4px;}
+  #addDrawer .drawer-rule{width:30px; height:1px; background:linear-gradient(90deg, transparent, var(--line), transparent); margin:16px auto 18px; opacity:.9;}
+  #addDrawer .drawer-row{display:flex; gap:10px;}
+  #addDrawer button{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; border-radius:15px; text-align:center; padding:19px 8px 17px; font-family:'Inter',sans-serif; font-size:12.5px; font-weight:700; letter-spacing:.02em; cursor:pointer; transition:transform .12s ease, background .12s ease, border-color .12s ease, box-shadow .12s ease;}
+  #addDrawer button:active{transform:scale(0.96);}
+  #addDrawer button svg{opacity:.8; transition:opacity .12s ease;}
+  #addDrawer button.secondary{background:rgba(255,255,255,0.04); border:1px solid var(--line); color:var(--text-dim);}
+  #addDrawer button.secondary:active{background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.2); color:var(--text);}
+  #addDrawer button.primary{background:radial-gradient(circle at 32% 22%, #FFFFFF 0%, #EDEAE0 55%, #DCD8CA 100%); border:1px solid rgba(255,255,255,0.5); color:#1A1204; box-shadow:0 10px 22px rgba(255,255,255,0.14), inset 0 1px 1px rgba(255,255,255,0.9);}
+  #addDrawer button.primary svg{opacity:1;}
+  #addDrawer button.primary:active{box-shadow:0 5px 14px rgba(255,255,255,0.1), inset 0 1px 1px rgba(255,255,255,0.9);}
+
+  #chatFooter{position:fixed; left:0; right:0; bottom:0; max-width:480px; margin:0 auto; z-index:5; background:linear-gradient(to top, rgba(13,15,19,0.92) 42%, rgba(13,15,19,0.75) 75%, rgba(13,15,19,0) 100%); padding-top:22px;
+    transform:translateZ(0); -webkit-transform:translateZ(0); backface-visibility:hidden; -webkit-backface-visibility:hidden; will-change:transform;}
+
+  #inputRow{display:flex; gap:8px; align-items:center; padding:0 14px calc(18px + env(safe-area-inset-bottom)) 14px; position:relative; z-index:2;}
+  #inputBar{flex:1; min-width:0; display:flex; align-items:center; gap:4px; background: rgba(255,251,240,0.98); border:1px solid var(--burgundy-line); border-radius:12px; padding:5px 6px 5px 15px; box-shadow:0 10px 26px rgba(0,0,0,0.28), 0 2px 8px rgba(0,0,0,0.16);}
+  #panelBtn{background:none; border:none; color:var(--burgundy); width:34px;height:34px; border-radius:8px; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; transition:background .15s;}
+  #panelBtn:active{background:rgba(255,255,255,0.35);}
+  #textInput{flex:1; min-width:0; border:none; border-radius:0; padding:9px 6px; font-family:'Inter',sans-serif; font-size:14.5px; background:none; color:var(--letter-ink); outline:none; resize:none; max-height:120px; overflow-y:auto; line-height:1.4; scrollbar-width:none; -ms-overflow-style:none;}
+  #textInput::-webkit-scrollbar{display:none;}
+  #textInput::placeholder{color:var(--letter-ink-soft);}
+  #sendBtn{background:linear-gradient(160deg, var(--burgundy) 0%, #3F1017 100%); color:var(--paper-a); border:none; border-radius:14px; width:44px;height:44px; font-weight:700; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 14px rgba(59,42,46,0.35), inset 0 1px 0 rgba(255,255,255,0.15); transition:transform .1s, box-shadow .1s;}
+  #sendBtn:active{transform:scale(0.94); box-shadow:0 2px 8px rgba(59,42,46,0.3), inset 0 1px 0 rgba(255,255,255,0.15);}
+  #sendBtn svg{margin-left:1px;}
+  #sendBtn:disabled{opacity:.5; box-shadow:none; transform:none;}
+
+  .typing .bubble{display:flex; gap:4px; padding:14px 16px;}
+  .typing span{width:6px;height:6px;border-radius:50%;background:var(--letter-ink-soft);opacity:.4;animation:blink 1.1s infinite;}
+  .typing span:nth-child(2){animation-delay:.18s;} .typing span:nth-child(3){animation-delay:.36s;}
+  @keyframes blink{0%,80%,100%{opacity:.25;transform:translateY(0);}40%{opacity:.9;transform:translateY(-2px);}}
+
+  .warn{font-size:12px; color:var(--rose); text-align:center; padding:8px 20px; line-height:1.5; position:relative; z-index:2;}
+  #fileInput, #bgFileInput{display:none;}
+
+  /* ---------- memory modal ---------- */
+  #memoryModal{position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:20; padding:20px;}
+  #memoryModal .sheet{width:100%; max-width:360px; background:var(--panel-solid); border-radius:18px; padding:20px 18px 22px; max-height:70vh; overflow-y:auto; box-shadow:0 24px 60px rgba(0,0,0,0.55); border:1px solid var(--line);}
+
+  #chatSettingsModal{position:fixed; inset:0; background:transparent; display:none; z-index:20;}
+  #chatSettingsModal .sheet{position:absolute; top:calc(50px + env(safe-area-inset-top)); right:14px; width:200px; max-width:62vw; background: var(--paper-a); border-radius:16px; padding:6px; max-height:70vh; overflow-y:auto; box-shadow:0 18px 44px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.2); border:1px solid rgba(59,42,46,0.16); transform-origin:top right;}
+  #chatSettingsModal h3{margin:0; padding:10px 12px 8px; font-family:'Fraunces',serif; font-size:14.5px; font-weight:600; color:var(--letter-ink); border-bottom:1px solid rgba(0,0,0,0.1);}
+  #chatSettingsModal .settings-btn{width:100%; background:none; border:none; border-radius:10px; color:var(--letter-ink); text-align:left; padding:11px 10px; font-family:'Inter',sans-serif; font-size:13.5px; font-weight:500; cursor:pointer; margin:2px 0 0; transition:background .12s;}
+  #chatSettingsModal .settings-btn:active{background:rgba(0,0,0,0.06);}
+  #memoryModal h3, #chatSettingsModal h3{margin:0 0 4px; font-family:'Fraunces',serif; font-size:16px;}
+  #memoryModal p.sub, #chatSettingsModal p.sub{margin:0 0 14px; font-size:12px; color:var(--text-dim);}
+  #memoryContent{font-size:13.5px; line-height:1.65; color:var(--text); white-space:pre-wrap;}
+  #memoryModal button#closeMemoryBtn{margin-top:16px; width:100%; background:var(--bg-elev); border:1px solid var(--line); color:var(--text); border-radius:12px; padding:12px; font-size:13.5px; cursor:pointer;}
+
+  /* ---------- character panel modal (Victorian letter) ---------- */
+  #panelModal{position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:20; padding:20px;}
+  #panelModal .sheet{
+    position:relative; width:100%; max-width:380px;
+    background: linear-gradient(170deg, var(--paper-a) 0%, var(--paper-b) 100%);
+    background-image:
+      radial-gradient(circle at 10% 6%, rgba(91,36,48,0.05), transparent 42%),
+      radial-gradient(circle at 90% 94%, rgba(91,36,48,0.05), transparent 42%),
+      linear-gradient(170deg, var(--paper-a) 0%, var(--paper-b) 100%);
+    border-radius:3px;
+    max-height:78vh; display:flex; flex-direction:column; overflow:hidden;
+    box-shadow:0 16px 40px rgba(0,0,0,0.42), inset 0 0 0 1px rgba(59,42,46,0.1);
+    border:1px solid rgba(59,42,46,0.16);
+  }
+  #panelModal .panel-header{padding:30px 26px 16px 20px;}
+  #panelModal .sheet-scroll{padding:22px 26px 26px 20px;}
+  #panelModal .sheet::before{
+    content:''; position:absolute; inset:0; pointer-events:none; opacity:.35; mix-blend-mode:multiply; border-radius:3px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
+  }
+  .panel-header{position:relative; z-index:2; flex-shrink:0; display:flex; align-items:center; justify-content:space-between; gap:18px; padding-bottom:16px; border-bottom:1px solid var(--burgundy-line); background:var(--paper-a);}
+  .sheet-scroll{flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; -ms-overflow-style:none;}
+  .sheet-scroll::-webkit-scrollbar{display:none;}
+  .panel-header h3{margin:0; font-family:'Playfair Display', serif; font-style:italic; font-weight:700; font-size:28px; color:var(--burgundy); letter-spacing:.005em;}
+  .panel-close{background:transparent; border:none; color:var(--letter-ink-soft); width:30px; height:30px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .panel-close:active{background:var(--burgundy-soft); color:var(--burgundy);}
+  .panel-section{margin-bottom:70px; position:relative;}
+  .panel-section:last-child{margin-bottom:0;}
+  .panel-sec-title{font-family:'EB Garamond', serif; font-style:normal; font-size:17px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--burgundy); margin-bottom:16px; display:inline-block; padding-bottom:4px; border-bottom:1px solid var(--burgundy-line); cursor:pointer; -webkit-tap-highlight-color:transparent;}
+  .panel-sec-title:active{opacity:.6;}
+  .panel-sec-title::before{content:'[ '; }
+  .panel-sec-title::after{content:' ]'; }
+
+  /* ---------- inventory-only modal (opened from the "expand" button on the Inventory
+     section title) — same paper theme, size, and shape as the Letter of Records itself,
+     just scoped to Inventory alone and rendered with larger chips since there's no other
+     section competing for space. ---------- */
+  #invModal{position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:22; padding:20px;}
+  #invModal .sheet{
+    position:relative; width:100%; max-width:380px;
+    background: linear-gradient(170deg, var(--paper-a) 0%, var(--paper-b) 100%);
+    background-image:
+      radial-gradient(circle at 10% 6%, rgba(91,36,48,0.05), transparent 42%),
+      radial-gradient(circle at 90% 94%, rgba(91,36,48,0.05), transparent 42%),
+      linear-gradient(170deg, var(--paper-a) 0%, var(--paper-b) 100%);
+    border-radius:3px;
+    max-height:78vh; display:flex; flex-direction:column; overflow:hidden;
+    box-shadow:0 16px 40px rgba(0,0,0,0.42), inset 0 0 0 1px rgba(59,42,46,0.1);
+    border:1px solid rgba(59,42,46,0.16);
+  }
+  #invModal .panel-header{padding:30px 26px 16px 20px;}
+  #invModal .sheet-scroll{padding:22px 26px 26px 20px;}
+  #invModal .sheet::before{
+    content:''; position:absolute; inset:0; pointer-events:none; opacity:.35; mix-blend-mode:multiply; border-radius:3px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
+  }
+  /* Larger chips for the dedicated inventory page — same look as .panel-chip, just roomier
+     since it's the only thing on the page. */
+  .panel-chips.chips-lg{gap:12px;}
+  .panel-chips.chips-lg .panel-chip{font-size:17.5px; padding:11px 20px;}
+  .panel-chips.chips-lg .panel-chip-status{font-size:15px;}
+  /* "Expand inventory" button that sits inline with the Inventory section title, opening
+     the dedicated larger-size page above. */
+  .panel-inv-expand-btn{background:transparent; border:1px solid var(--burgundy-line); color:var(--burgundy); width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; -webkit-tap-highlight-color:transparent;}
+  .panel-inv-expand-btn:active{background:var(--burgundy-soft);}
+
+  /* ---------- section info modal (what a Letter of Records section is / how it works) ---------- */
+  #catInfoModal{position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:25; padding:20px;}
+  #catInfoModal .sheet{
+    position:relative; width:100%; max-width:340px;
+    background: linear-gradient(170deg, var(--paper-a) 0%, var(--paper-b) 100%);
+    border-radius:3px;
+    max-height:76vh; display:flex; flex-direction:column; overflow:hidden;
+    box-shadow:0 16px 40px rgba(0,0,0,0.42), inset 0 0 0 1px rgba(59,42,46,0.1);
+    border:1px solid rgba(59,42,46,0.16);
+  }
+  #catInfoModal .panel-header{padding:24px 22px 14px;}
+  #catInfoModal .panel-header h3{font-size:22px;}
+  #catInfoModal .sheet-scroll{padding:20px 22px 22px;}
+  .cat-info-block{margin-bottom:20px;}
+  .cat-info-block:last-child{margin-bottom:0;}
+  .cat-info-label{font-family:'EB Garamond', serif; font-size:12.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--burgundy); opacity:.8; margin-bottom:6px;}
+  .cat-info-text{font-family:'EB Garamond', serif; font-size:15.5px; line-height:1.6; color:var(--letter-ink);}
+  .panel-row{display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 10px; padding:10px 0; font-family:'EB Garamond', serif; font-size:15.5px; color:var(--letter-ink);}
+  .panel-k{color:var(--burgundy); font-weight:700; font-style:normal; font-size:14.5px; letter-spacing:.03em; text-transform:uppercase; flex-shrink:0; opacity:.85;}
+  .panel-v{color:var(--letter-ink); font-weight:700; font-family:'Caveat', cursive; font-size:24px; letter-spacing:.01em; text-align:right; flex:1 1 auto; min-width:120px; margin-left:auto; white-space:normal; overflow-wrap:break-word; word-break:break-word;}
+  .panel-chips{display:flex; flex-wrap:wrap; gap:9px;}
+  .panel-chip{background:rgba(255,255,255,0.35); border:1px solid var(--burgundy-line); color:var(--letter-ink); font-family:'EB Garamond', serif; font-weight:600; font-size:14.5px; letter-spacing:.02em; padding:7px 15px; border-radius:1px;}
+  .panel-chip-status{font-weight:400; font-style:italic; opacity:.72; margin-left:6px;}
+  /* A Scheduled Events chip whose day has already arrived stays on the sheet permanently —
+     it just dims to read as "passed" instead of being removed. */
+  .panel-chip.is-past{opacity:.42;}
+  /* Inventory drag-to-merge: long-press a chip to arm it, then drag it onto another to
+     merge them. The dragged item's floating "ghost" copy, the drop-target highlight, and
+     the editable pending-merge chip all reuse .panel-chip's own look (via className, not
+     duplicated values) so a dragged/merged item never looks like a different kind of
+     element than the ones sitting still on the sheet. */
+  .panel-chip[data-id]{transition:transform .15s ease, box-shadow .15s ease;}
+  .panel-chip.is-pressing{transform:scale(0.94); box-shadow:0 0 0 2px var(--burgundy-line) inset;}
+  .panel-chip.is-dragging{opacity:.4;}
+  .panel-chip.is-drop-target{outline:2px dashed var(--burgundy);}
+  .panel-chip-ghost{position:fixed; margin:0; pointer-events:none; z-index:9999; box-sizing:border-box; display:block; background:rgba(255,251,240,0.97); box-shadow:0 10px 26px rgba(0,0,0,0.4);}
+  .panel-merge-bar{margin:0 0 9px;}
+  .panel-merge-chip{display:flex; align-items:center; gap:8px; width:100%; box-sizing:border-box;}
+  .panel-merge-name{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:inherit; font:inherit;}
+  .panel-merge-confirm, .panel-merge-cancel{flex-shrink:0; width:26px; height:26px; border-radius:50%; border:1px solid var(--burgundy-line); display:flex; align-items:center; justify-content:center; cursor:pointer; font-family:inherit; font-size:13px; line-height:1; padding:0; -webkit-tap-highlight-color:transparent;}
+  .panel-merge-confirm{background:var(--burgundy); color:#fdf6e3;}
+  .panel-merge-cancel{background:transparent; color:var(--burgundy);}
+  .panel-merge-hint{font-family:'EB Garamond', serif; font-size:12.5px; font-style:italic; color:var(--letter-ink-soft); margin-bottom:6px;}
+  .panel-empty{font-family:'EB Garamond', serif; font-size:14px; color:var(--letter-ink-soft); font-style:italic;}
+  .panel-skill-row{padding:11px 0;}
+  .panel-skill-head{display:flex; flex-direction:column; align-items:flex-start; gap:3px; margin-bottom:7px;}
+  .panel-skill-head .panel-k{opacity:.85; display:block; max-width:100%; white-space:normal; overflow-wrap:break-word; word-break:normal; hyphens:none;}
+  .panel-skill-pct{font-family:'Caveat', cursive; font-weight:700; font-size:21px; color:var(--burgundy); letter-spacing:.01em;}
+  .panel-skill-pct.is-mastered{color:#8a6d1a;}
+  .panel-skill-bar{height:6px; border-radius:3px; background:rgba(91,36,48,0.12); border:1px solid var(--burgundy-line); overflow:hidden;}
+  .panel-skill-fill{height:100%; border-radius:2px; background:linear-gradient(90deg, var(--burgundy) 0%, #8B5560 100%); transition:width .3s ease;}
+  .panel-skill-fill.is-mastered{background:linear-gradient(90deg, #a3811f 0%, #d4af37 100%);}
+  .panel-status{font-family:'EB Garamond', serif; font-style:italic; font-size:17px; color:var(--letter-ink); line-height:1.75; background:rgba(255,255,255,0.32); border-left:2px solid var(--burgundy); padding:14px 17px;}
+
+  /* ---------- messages ---------- */
+  #messagesScreen{flex:1; padding:20px 14px 90px; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; display:none;}
+  #messagesScreen h2{font-family:'Fraunces',serif; font-size:23px; margin:2px 0 30px; padding:0 10px; font-weight:600; display:flex; align-items:center; gap:10px;}
+  #msgEmpty{padding:70px 20px; text-align:center; color:var(--text-dim);}
+  #msgList{display:flex; flex-direction:column; gap:10px;}
+  .conv-row{display:flex; align-items:center; gap:14px; padding:14px 10px; border-radius:12px; cursor:pointer;}
+  .conv-row:active{background:var(--bg-elev);}
+  .conv-avatar{width:58px;height:58px;border-radius:12px; object-fit:cover; background:var(--bg-elev); flex-shrink:0;}
+  .conv-avatar.placeholder{display:flex;align-items:center;justify-content:center; font-family:'Fraunces',serif; color:var(--text-dim); font-size:22px;}
+  .conv-info{min-width:0; flex:1;}
+  .conv-name{font-weight:700; font-size:16.5px; margin-bottom:3px;}
+  .conv-preview{font-size:13.5px; color:var(--text-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+
+  /* ---------- settings ---------- */
+  #settingsScreen{flex:1; padding:20px 14px 160px; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; display:none;}
+  #settingsScreen h2{font-family:'Fraunces',serif; font-size:23px; margin:2px 0 30px; padding:0 10px; font-weight:600; display:flex; align-items:center; gap:10px;}
+  .settings-card{background:linear-gradient(165deg, #1B1E27 0%, var(--panel-solid) 100%); border:1px solid var(--line); border-radius:16px; padding:18px; margin-bottom:30px; box-shadow:0 6px 20px rgba(0,0,0,0.18);}
+  .settings-card:last-of-type{margin-bottom:50px;}
+  .settings-card .card-head{display:flex; align-items:center; gap:10px; margin-bottom:14px;}
+  .settings-card .icon-badge{width:30px; height:30px; border-radius:9px; background:rgba(255,255,255,0.06); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--text-dim);}
+  .settings-card.danger .icon-badge{background:rgba(224,99,122,0.1); border-color:rgba(224,99,122,0.3); color:var(--rose);}
+  .settings-card .label{font-size:12.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-dim); font-weight:700; margin:0;}
+  .settings-card .value{font-size:13.5px; font-weight:400; line-height:1.6; color:var(--text-dim);}
+  .settings-field{width:100%; border:1px solid var(--line); border-radius:12px; background:var(--bg-elev); font-family:inherit; font-size:13.5px; color:var(--text); padding:13px 14px; transition:border-color .15s ease, box-shadow .15s ease;}
+  .settings-field:focus{outline:none; border-color:rgba(255,255,255,0.4); box-shadow:0 0 0 3px rgba(255,255,255,0.06);}
+  .settings-field::placeholder{color:var(--text-dim);}
+  select.settings-field{-webkit-appearance:none; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239A9FAC' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; padding-right:38px; cursor:pointer;}
+  .settings-btn{width:100%; background:var(--bg-elev); border:1px solid var(--line); color:var(--text); border-radius:12px; padding:13px; font-size:13.5px; font-weight:600; cursor:pointer; margin-top:10px; transition:transform .08s ease, background .15s ease;}
+  .settings-btn:active{transform:scale(0.98);}
+  .settings-btn.primary{background:var(--amber); color:#1A1204; border:none; box-shadow:0 4px 14px rgba(255,255,255,0.12);}
+  .settings-btn.danger{color:var(--rose); border-color:rgba(224,99,122,0.4); background:rgba(224,99,122,0.06);}
+  .settings-status{font-size:12px; color:var(--text-dim); margin-top:10px; line-height:1.5;}
+
+  /* ---------- usage screen ---------- */
+  #usageScreen{flex:1; padding:20px 14px 160px; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; display:none;}
+  #usageScreen h2{font-family:'Fraunces',serif; font-size:23px; margin:2px 0 30px; padding:0 10px; font-weight:600; display:flex; align-items:center; gap:10px;}
+  .usage-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; font-size:13.5px; color:var(--text-dim); border-bottom:1px solid var(--line);}
+  .usage-val{color:var(--text); font-weight:600; text-align:right;}
+  .usage-bar-track{width:100%; height:7px; border-radius:4px; background:var(--bg-elev); margin-top:12px; overflow:hidden;}
+  .usage-bar-fill{height:100%; border-radius:4px; background:linear-gradient(90deg, #E4E1D8, var(--amber)); transition:width .4s ease;}
+  .usage-warn{font-size:13px; color:var(--rose); background:rgba(224,99,122,0.08); border:1px solid rgba(224,99,122,0.3); border-radius:12px; padding:12px 14px; margin-bottom:30px; line-height:1.5;}
+  .usage-model-grid{display:flex; flex-direction:column; gap:30px; margin-bottom:30px;}
+  .usage-model-card{background:linear-gradient(165deg, #1B1E27 0%, var(--panel-solid) 100%); border:1px solid var(--line); border-radius:18px; padding:22px; box-shadow:0 6px 20px rgba(0,0,0,0.18);}
+  .usage-model-card.no-free{opacity:.75;}
+  .um-name{font-family:'Fraunces',serif; font-size:19px; font-weight:700; color:var(--text); margin-bottom:14px;}
+  .um-stats{display:flex; align-items:baseline; gap:8px; margin-bottom:12px;}
+  .um-used{font-size:32px; font-weight:800; color:var(--text); line-height:1;}
+  .um-of{font-size:14px; color:var(--text-dim);}
+  .um-remaining{font-size:13px; color:var(--text-dim); margin-bottom:14px;}
+  .um-remaining b{color:var(--amber); font-weight:700;}
+  .usage-model-card .usage-bar-track{margin-top:0; height:9px;}
+  .um-tokens{font-size:11.5px; color:var(--text-dim); margin-top:12px; padding-top:12px; border-top:1px solid var(--line);}
+  .um-paid-note{font-size:12px; color:var(--text-dim); font-style:italic; margin-top:2px;}
+
+  /* ---------- lock screen ---------- */
+  #lockScreen{position:fixed; inset:0; z-index:1000; background:var(--bg); display:flex; align-items:center; justify-content:center; padding:24px;}
+  #lockScreen.hidden{display:none;}
+  .lock-card{width:100%; max-width:320px; text-align:center;}
+  .lock-title{font-family:'Fraunces',serif; font-weight:600; font-size:22px; color:var(--text); margin-bottom:6px;}
+  .lock-sub{font-size:13px; color:var(--text-dim); margin-bottom:28px;}
+  .lock-dots{display:flex; justify-content:center; gap:14px; margin-bottom:26px;}
+  .lock-dot{width:14px; height:14px; border-radius:50%; border:1.5px solid var(--line); background:transparent; transition:background .15s ease, border-color .15s ease, transform .15s ease;}
+  .lock-dot.filled{background:var(--text); border-color:var(--text); transform:scale(1.1);}
+  .lock-dots.shake{animation:lockShake .38s ease;}
+  @keyframes lockShake{10%,90%{transform:translateX(-2px);}20%,80%{transform:translateX(4px);}30%,50%,70%{transform:translateX(-8px);}40%,60%{transform:translateX(8px);}}
+  .lock-keypad{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; max-width:260px; margin:0 auto;}
+  .lock-key{aspect-ratio:1; border-radius:50%; border:1px solid var(--line); background:var(--bg-elev); color:var(--text); font-family:'Inter',sans-serif; font-size:19px; font-weight:600; display:flex; align-items:center; justify-content:center; -webkit-user-select:none; user-select:none;}
+  .lock-key:active{background:#20232c;}
+  .lock-key.ghost{background:none; border:none;}
+  .lock-error{min-height:18px; font-size:12.5px; color:var(--rose); margin-top:16px;}
+</style>
+</head>
+<body>
+<div id="lockScreen">
+  <div class="lock-card">
+    <div class="lock-title" id="lockTitle">Worlds</div>
+    <div class="lock-sub" id="lockSub">Enter PIN to continue</div>
+    <div class="lock-dots" id="lockDots">
+      <div class="lock-dot"></div><div class="lock-dot"></div><div class="lock-dot"></div>
+      <div class="lock-dot"></div><div class="lock-dot"></div><div class="lock-dot"></div>
+    </div>
+    <div class="lock-keypad" id="lockKeypad">
+      <button class="lock-key" data-k="1">1</button><button class="lock-key" data-k="2">2</button><button class="lock-key" data-k="3">3</button>
+      <button class="lock-key" data-k="4">4</button><button class="lock-key" data-k="5">5</button><button class="lock-key" data-k="6">6</button>
+      <button class="lock-key" data-k="7">7</button><button class="lock-key" data-k="8">8</button><button class="lock-key" data-k="9">9</button>
+      <div class="lock-key ghost"></div><button class="lock-key" data-k="0">0</button><button class="lock-key ghost" data-k="back">⌫</button>
+    </div>
+    <div class="lock-error" id="lockError"></div>
+  </div>
+</div>
+<div id="app">
+
+  <div id="homeScreen">
+    <div id="topbar">
+      <div class="topbar-head">
+        <div id="topbarTitle"><svg class="title-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9l4.2-1.4L12 3z"/><path d="M19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9L19 14z"/><path d="M5 14l.7 1.8L7.5 16.5l-1.8.7L5 19l-.7-1.8L2.5 16.5l1.8-.7L5 14z"/></svg><span>FANTASY</span></div>
+        <div id="worldCount"></div>
+      </div>
+      <div class="row1">
+        <div id="searchBox">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="searchInput" placeholder="Search your worlds">
+        </div>
+      </div>
+    </div>
+
+    <div id="library">
+      <div id="libEmpty" class="screen-hidden">
+        <div class="display">No worlds yet</div>
+        <div>Tap the + below to build your first one.</div>
+      </div>
+      <div id="libGrid"></div>
+    </div>
+  </div>
+
+  <div id="cardCtxOverlay"></div>
+  <div id="cardCtxMenu">
+    <button id="cardCtxEdit"><span class="ctx-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span> Edit</button>
+    <button id="cardCtxDownload"><span class="ctx-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg></span> Download</button>
+    <button id="cardCtxImport"><span class="ctx-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg></span> Import</button>
+    <div class="ctx-divider"></div>
+    <button id="cardCtxDelete" class="danger"><span class="ctx-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></span> Delete</button>
+  </div>
+  <input type="file" id="cardCtxImportFileInput" accept="application/json" style="display:none;">
+
+  <div id="messagesScreen">
+    <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Messages</h2>
+    <div id="msgEmpty" class="screen-hidden"><div>No conversations yet — start a world to begin one.</div></div>
+    <div id="msgList"></div>
+  </div>
+
+  <div id="settingsScreen">
+    <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</h2>
+    <div class="settings-card">
+      <div class="card-head">
+        <div class="icon-badge"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg></div>
+        <div class="label">Gemini API key</div>
+      </div>
+      <input type="text" id="geminiKeyInput" class="settings-field" placeholder="Paste your Gemini API key" style="margin-bottom:12px;">
+      <button class="settings-btn primary" id="saveGeminiKeyBtn">Save key</button>
+      <div class="settings-status" id="geminiKeyStatus"></div>
+    </div>
+    <div class="settings-card">
+      <div class="card-head">
+        <div class="icon-badge"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg></div>
+        <div class="label">Model</div>
+      </div>
+      <select id="geminiModelSelect" class="settings-field">
+        <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
+        <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
+        <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
+        <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+      </select>
+    </div>
+    <div class="settings-card">
+      <div class="card-head">
+        <div class="icon-badge"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg></div>
+        <div class="label">Background model</div>
+      </div>
+      <div class="value" style="margin-bottom:10px;">Used for memory summaries and the character sheet (letters of record). Flash Lite handles this better, but you can drop to 3.1 if you're low on tokens.</div>
+      <select id="geminiBgModelSelect" class="settings-field">
+        <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
+        <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+      </select>
+    </div>
+    <div class="settings-card">
+      <div class="card-head">
+        <div class="icon-badge"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+        <div class="label">Change PIN</div>
+      </div>
+      <div class="value" style="margin-bottom:10px;">Only the PIN's hash is stored — never the digits themselves.</div>
+      <input type="password" id="currentPinInput" class="settings-field" placeholder="Current PIN" inputmode="numeric" maxlength="6" style="margin-bottom:8px;">
+      <input type="password" id="newPinInput" class="settings-field" placeholder="New PIN (6 digits)" inputmode="numeric" maxlength="6" style="margin-bottom:8px;">
+      <input type="password" id="confirmPinInput" class="settings-field" placeholder="Confirm new PIN" inputmode="numeric" maxlength="6" style="margin-bottom:12px;">
+      <button class="settings-btn primary" id="savePinBtn">Update PIN</button>
+      <div class="settings-status" id="pinChangeStatus"></div>
+    </div>
+    <div class="settings-card">
+      <div class="card-head">
+        <div class="icon-badge"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg></div>
+        <div class="label">About</div>
+      </div>
+      <div class="value">Worlds stores everything locally on this device (nothing leaves your browser except story requests to Gemini) and generates stories via Google's free Gemini API. Open any story and tap the ⚙️ icon to view memory or back up that story. Clearing your browser data will erase your worlds — use the export option to back them up.</div>
+    </div>
+    <div class="settings-card danger">
+      <div class="card-head">
+        <div class="icon-badge"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg></div>
+        <div class="label">Danger zone</div>
+      </div>
+      <button class="settings-btn danger" id="eraseAllBtn">Erase all worlds &amp; conversations</button>
+    </div>
+  </div>
+
+  <div id="usageScreen">
+    <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15v3M12 11v7M17 7v11"/></svg>Usage</h2>
+    <div id="usageNoKeyWarn" class="usage-warn screen-hidden">No Gemini key saved yet, so nothing has been used. Add one in Settings.</div>
+    <div class="usage-model-grid" id="usageModelGrid"></div>
+    <div class="settings-card">
+      <div class="card-head">
+        <div class="icon-badge"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg></div>
+        <div class="label">Storage</div>
+      </div>
+      <div class="usage-row"><span>Used on this device</span><span id="usageStorageUsed" class="usage-val">—</span></div>
+      <div class="usage-row" style="border-bottom:none;"><span>Available</span><span id="usageStorageQuota" class="usage-val">—</span></div>
+      <div class="usage-bar-track"><div class="usage-bar-fill" id="usageStorageBar" style="width:0%;"></div></div>
+    </div>
+    <button class="settings-btn" id="resetUsageStatsBtn" style="margin-top:30px; margin-bottom:50px;">Reset usage counters</button>
+  </div>
+
+  <div id="bottomNav">
+    <button class="nav-item" data-tab="library">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+      Home
+    </button>
+    <button class="nav-item" data-tab="messages">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Messages
+    </button>
+    <button class="nav-item plus" data-tab="new">
+      <div class="plus-circle"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1A1204" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></div>
+    </button>
+    <button class="nav-item" data-tab="usage">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15v3M12 11v7M17 7v11"/></svg>
+      Usage
+    </button>
+    <button class="nav-item" data-tab="settings">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Settings
+    </button>
+  </div>
+
+  <div id="addDrawerOverlay"></div>
+  <div id="addDrawer">
+    <div class="drawer-eyebrow">New entry</div>
+    <div class="drawer-title">Add a World</div>
+    <div class="drawer-rule"></div>
+    <div class="drawer-row">
+      <button id="addDrawerImportBtn" class="secondary"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg><span>Import</span></button>
+      <button id="addDrawerNewBtn" class="primary"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg><span>Create</span></button>
+    </div>
+  </div>
+  <input type="file" id="addDrawerImportFileInput" accept="application/json" style="display:none">
+
+  <div id="editor">
+    <div class="backRow">
+      <h2 id="editorTitle">New world</h2>
+      <button id="editorCloseBtn" aria-label="Close">&times;</button>
+    </div>
+    <div class="panel">
+      <div id="uploadsRow">
+        <div id="avatarRow">
+          <div id="avatarPreview">葉</div>
+          <div class="upload-caption">Cover image</div>
+          <input type="file" id="fileInput" accept="image/*">
+        </div>
+        <div id="bgRow">
+          <div id="bgPreview"></div>
+          <div class="upload-caption">Background image</div>
+          <button id="bgClearBtn" type="button" class="screen-hidden">Remove</button>
+          <input type="file" id="bgFileInput" accept="image/*">
+        </div>
+      </div>
+      <div class="field"><label>World name</label><input type="text" id="fName" placeholder="e.g. Leaf Academy, Marvel Universe"></div>
+      <div id="editorLockNote" class="screen-hidden">🔒 The setting, characters, and opening scene are locked once the story has begun — the AI has already built on them, and changing them now would contradict what's already happened. Start a new world for a different setting.</div>
+      <div class="field">
+        <label>Setting &amp; characters</label>
+        <textarea id="fLore" placeholder="Describe the world: where/when it is, the tone, the key characters and how they act and speak, and who the player is in it. Tip: a line like &quot;Day 12 — Chūnin Exam&quot; adds that to Scheduled Events automatically."></textarea>
+      </div>
+      <div class="field"><label>Opening scene</label><textarea id="fOpening" placeholder="How the story begins — set the scene in 2nd person and end on a moment the player can react to."></textarea></div>
+      <button id="saveCardBtn">Save world</button>
+      <button id="deleteCardBtn" class="screen-hidden">Delete this world</button>
+    </div>
+  </div>
+
+  <div id="chatScreen">
+    <div id="chatBg"></div>
+    <div id="chatBody">
+      <div id="chatHeader">
+        <button class="iconbtn" id="chatBackBtn"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m15 18-6-6 6-6"/></svg></button>
+        <div id="chatTitleWrap">
+          <div id="chatAvatar" class="placeholder">葉</div>
+          <span id="chatName">—</span>
+        </div>
+        <button class="iconbtn" id="chatSettingsBtn" title="Story options">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+      </div>
+      <div id="log"></div>
+    </div>
+
+    <div id="msgCtxOverlay"></div>
+    <div id="msgCtxMenu">
+      <button id="msgCtxCopy"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy</button>
+      <button id="msgCtxDelete" class="danger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg> Delete</button>
+    </div>
+    <div id="chatFooter">
+      <div id="inputRow">
+        <div id="inputBar">
+          <button id="panelBtn" title="Letter of records">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3.5h11.5L20 7v13.5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z"/><path d="M16.5 3.5V7H20"/><path d="M8 12h8M8 15.5h8M8 8.5h4"/></svg>
+          </button>
+          <textarea id="textInput" placeholder="Say or do something..." rows="1"></textarea>
+        </div>
+        <button id="sendBtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.4 22 12 3.4 3.6 3 10l13 2-13 2z"/></svg></button>
+      </div>
+    </div>
+
+    <div id="mediaDrawerOverlay"></div>
+    <div id="mediaDrawer">
+      <div class="drawer-handle"></div>
+      <div class="drawer-title">Attach to message</div>
+      <button id="mediaPhotoBtn"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg> Photo</button>
+      <button id="mediaGifBtn"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 13v-2a1 1 0 0 1 1-1h1M8 13a1 1 0 0 0 1 1h1M14 10v6M18 10h-3v6M18 13h-2.5"/></svg> GIF</button>
+      <button id="mediaVideoBtn"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="m22 8.5-6 3.5 6 3.5v-7Z"/></svg> Video</button>
+    </div>
+    <input type="file" id="mediaFileInput" accept="image/*" style="display:none">
+  </div>
+
+</div>
+
+<div id="chatSettingsModal">
+  <div class="sheet">
+    <h3>Story options</h3>
+    <button class="settings-btn" id="csMemoryBtn">View memory</button>
+    <button class="settings-btn" id="csExportBtn">Download this story</button>
+    <button class="settings-btn" id="csImportIntoBtn">Import into this world</button>
+    <input type="file" id="csImportIntoFileInput" accept="application/json" style="display:none">
+  </div>
+</div>
+
+<div id="memoryModal">
+  <div class="sheet">
+    <h3>Story memory</h3>
+    <p class="sub">What the AI currently remembers about your story so far</p>
+    <div id="memoryContent">Nothing remembered yet — memory builds up as you play.</div>
+    <button id="closeMemoryBtn">Close</button>
+  </div>
+</div>
+
+<div id="panelModal">
+  <div class="sheet">
+    <div class="panel-header">
+      <h3 id="panelWorldName">A letter of records</h3>
+      <button id="closePanelBtn" class="panel-close" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+    <div class="sheet-scroll">
+      <div id="panelContent"></div>
+    </div>
+  </div>
+</div>
+
+<div id="invModal">
+  <div class="sheet">
+    <div class="panel-header">
+      <h3 id="invWorldName">Inventory</h3>
+      <button id="closeInvBtn" class="panel-close" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+    <div class="sheet-scroll">
+      <div id="invContent"></div>
+    </div>
+  </div>
+</div>
+
+<div id="catInfoModal">
+  <div class="sheet">
+    <div class="panel-header">
+      <h3 id="catInfoTitle">Section</h3>
+      <button id="closeCatInfoBtn" class="panel-close" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+    <div class="sheet-scroll">
+      <div class="cat-info-block">
+        <div class="cat-info-label">What it is</div>
+        <div class="cat-info-text" id="catInfoWhat"></div>
+      </div>
+      <div class="cat-info-block">
+        <div class="cat-info-label">How it updates</div>
+        <div class="cat-info-text" id="catInfoHow"></div>
+      </div>
+      <div class="cat-info-block">
+        <div class="cat-info-label">What won't change it</div>
+        <div class="cat-info-text" id="catInfoWont"></div>
+      </div>
+      <div class="cat-info-block" id="catInfoUseBlock">
+        <div class="cat-info-label">How to add one yourself</div>
+        <div class="cat-info-text" id="catInfoUse"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="script.js" defer></script>
+</body>
+</html>
