@@ -1,0 +1,757 @@
+<!-- ================================================================
+     CHATROOM FILE — Sections 4, 5, 6
+     This is a fragment, not a standalone page: it depends on the
+     shared globals, storage helpers, and AI-calling layer defined
+     in outside.html (Section 3), which must load first.
+     ================================================================ -->
+
+<style>
+
+  /* ============================================================
+     SECTION 5 — INSIDE THE CHATROOM: CSS
+     ============================================================ */
+  /* ---------- chat ---------- */
+  #chatScreen{display:none; flex-direction:column; position:fixed; inset:0; max-width:480px; margin:0 auto; z-index:10;
+    background: linear-gradient(170deg, var(--paper-a) 0%, var(--paper-b) 100%);}
+  #chatBg{position:fixed; top:0; left:0; right:0; max-width:480px; margin:0 auto; background-size:cover; background-position:center; z-index:0;
+    /* ROOT CAUSE #1 (the zoom): `inset:0` on a fixed element sizes its height to
+       Chrome's DYNAMIC visible viewport, which genuinely shrinks/grows as the address
+       bar shows/hides while scrolling — the `background-size:cover` image rescaled to
+       match, which looked like a zoom in/out. Needs a viewport unit that doesn't
+       track that animation.
+       ROOT CAUSE #2 (the up/down drift, from the first attempted fix): `svh` ("small
+       viewport height") is static, but it's sized to the SMALLEST possible screen —
+       address bar always assumed visible. So the moment the real address bar actually
+       hid and the true screen grew past that fixed-size box, a gap opened up at the
+       bottom of the image; that gap opening and closing as you scrolled is what read
+       as the image "moving." Fix: use `lvh` ("large viewport height") instead — same
+       static, non-animating unit, but sized to the LARGEST possible screen (address
+       bar assumed hidden). The box is now always at least as tall as the screen can
+       ever get, so there's never a gap to open, and it still never changes value
+       mid-scroll. `100vh` stays as an unsupported-browser fallback (older WebViews);
+       it's overridden by the `lvh` rule wherever available. */
+    height:100vh; height:100lvh;
+    /* Forces #chatBg onto its own persistent GPU compositing layer, independent of
+       #chatBody's scrolling layer below — extra insurance against any layer-level
+       resize some Android WebViews still attempt. */
+    transform:translateZ(0); -webkit-transform:translateZ(0); backface-visibility:hidden; -webkit-backface-visibility:hidden; will-change:transform;}
+  #chatBg::after{content:''; position:absolute; inset:0; background:linear-gradient(to bottom, rgba(13,15,19,0.55) 0%, rgba(13,15,19,0.3) 22%, rgba(13,15,19,0.3) 78%, rgba(13,15,19,0.55) 100%);}
+  #chatBody{flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; touch-action:pan-y; display:flex; flex-direction:column; position:relative; z-index:2; scrollbar-width:none;}
+  #chatBody::-webkit-scrollbar{display:none;}
+  #chatHeader{display:flex; align-items:center; gap:10px; position:fixed; top:calc(10px + env(safe-area-inset-top)); left:14px; right:14px; max-width:452px; margin:0 auto; z-index:6; padding:6px 8px;
+    transform:translateZ(0); -webkit-transform:translateZ(0); backface-visibility:hidden; -webkit-backface-visibility:hidden; will-change:transform;}
+  #chatHeader button.iconbtn{background:none; border:none; color:#FFFFFF; width:40px;height:40px; border-radius:11px; cursor:pointer; display:flex;align-items:center;justify-content:center; flex-shrink:0; transition:background .15s;}
+  #chatHeader button.iconbtn:active{background:rgba(255,255,255,0.15);}
+  #chatSettingsBtn{margin-left:auto;}
+  #chatTitleWrap{display:flex; align-items:center; gap:8px; background: rgba(250,244,230,0.85); border-radius:20px; padding:5px 14px 5px 5px; cursor:pointer; min-width:0; flex:1;}
+  #chatAvatar{width:28px;height:28px;border-radius:50%; object-fit:cover; background:var(--burgundy); flex-shrink:0;}
+  #chatAvatar.placeholder{display:flex;align-items:center;justify-content:center; font-family:'Fraunces',serif; color:var(--paper-a); font-size:12.5px;}
+  #chatName{flex:1; min-width:0; font-size:13.5px; font-weight:700; letter-spacing:.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#1A1204;}
+
+  #log{flex:1; padding:calc(env(safe-area-inset-top) + 104px) 14px 130px; display:flex; flex-direction:column; gap:24px; position:relative; scroll-padding-top:12px;}
+  .msg{max-width:87%; animation:msgIn .25s ease both;}
+  @keyframes msgIn{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+  .msg.user{align-self:flex-end; max-width:74%;}
+  .bubble{padding:12px 16px; border-radius:8px; font-size:16px; line-height:1.5; box-shadow:0 6px 16px rgba(59,42,46,0.12); font-family:'Inter', sans-serif; font-weight:400;}
+  .msg.ai .bubble .dialogue{font-weight:600; color:#FFFFFF;}
+  .msg.ai .bubble{background:rgba(0,0,0,0.7); color:#BCC1CD; box-shadow:0 6px 18px rgba(0,0,0,0.25); border-bottom-left-radius:4px;}
+  .msg.user .bubble{background:rgba(255,251,240,0.7); color:#2A1F22; font-weight:400; border-bottom-right-radius:4px; box-shadow:0 6px 18px rgba(0,0,0,0.25);}
+  .msg.system .bubble{background:rgba(0,0,0,0.7); color:#F5F3EE; box-shadow:0 6px 18px rgba(0,0,0,0.25); border-bottom-left-radius:4px;}
+  .sys-label{font-size:10.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--rose); margin:0 4px 6px;}
+  /* Merged "system bro" tools — a semi-square tile inside the System bubble itself
+     (Scheduled Events), expanding its own panel in place below the tile, inside the
+     one bubble rather than as a separate floating box. Inventory used to have a tile
+     here too (tap-to-remove) — that's moved to the dedicated Inventory-only merger
+     page as a per-chip delete cross now, so only one tile remains. */
+  .sys-tools-wrap{margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.1);}
+  .sys-tools{display:flex; gap:10px;}
+  .sys-tool-tile{flex:0 1 160px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:7px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:16px; padding:16px 8px; cursor:pointer; transition:background .15s, border-color .15s; text-align:center; color:#F5F3EE;}
+  .sys-tool-tile:active{background:rgba(255,255,255,0.13);}
+  .sys-tool-tile.active{border-color:var(--rose); background:rgba(224,99,122,0.16);}
+  .sys-tool-tile:disabled{opacity:.6; cursor:default;}
+  .sys-tool-tile svg{flex-shrink:0; opacity:.85; color:var(--rose);}
+  .sys-tool-tile span{font-size:10.5px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;}
+  .sys-tool-body{display:none;}
+  .sys-tool-body.open{display:block; margin-top:12px; animation:sysToolBodyIn .18s ease both;}
+  @keyframes sysToolBodyIn{from{opacity:0; transform:translateY(-4px);} to{opacity:1; transform:translateY(0);}}
+  .sys-inv-title{font-size:10.5px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--rose); margin-bottom:10px;}
+  .sys-inv-list{display:flex; flex-direction:column; gap:6px;}
+  .sys-inv-item{display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); color:#F5F3EE; padding:9px 11px; border-radius:9px; font-size:14px; text-align:left; cursor:pointer; transition:background .15s;}
+  .sys-inv-item:active{background:rgba(255,60,60,0.22);}
+  .sys-inv-item svg{flex-shrink:0; opacity:.55; color:var(--rose);}
+  .sys-inv-label{overflow-wrap:break-word; word-break:break-word;}
+  .sys-inv-status{font-weight:400; font-style:italic; opacity:.65; margin-left:6px; font-size:12.5px;}
+  .sys-inv-empty{font-size:13px; color:rgba(245,243,238,0.55); font-style:italic; padding-bottom:8px;}
+  /* A Scheduled Events entry can never be removed (tapped or otherwise) — once its day has
+     come and gone it simply dims in place instead, so the sheet keeps a permanent, at-a-glance
+     record of what's already happened vs what's still ahead. */
+  .sys-inv-item.is-sched{cursor:default;}
+  .sys-inv-item.is-sched:active{background:rgba(255,255,255,0.06);}
+  .sys-inv-item.is-past{opacity:.4;}
+  .sys-sched-form{display:flex; flex-direction:column; gap:8px;}
+  .sys-sched-row{display:flex; gap:8px;}
+  .sys-sched-row input[type=number]{width:64px; flex-shrink:0; -moz-appearance:textfield;}
+  .sys-sched-row input[type=number]::-webkit-outer-spin-button, .sys-sched-row input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none; margin:0;}
+  .sys-sched-form input{background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#F5F3EE; border-radius:9px; padding:10px 11px; font-size:14px; font-family:'Inter',sans-serif; min-width:0;}
+  .sys-sched-row input[type=text]{flex:1;}
+  .sys-sched-form input::placeholder{color:rgba(245,243,238,0.4);}
+  .sys-sched-form input:focus{outline:none; border-color:var(--rose);}
+  .sys-sched-hint{font-size:11px; color:rgba(245,243,238,0.5); font-style:italic;}
+  .sys-sched-hint.is-error{color:#e08a8a; font-style:normal; font-weight:600;}
+  .sys-sched-hint.is-notice{color:#E8C77E; font-style:normal; font-weight:600;}
+  .sys-sched-btn{background:var(--rose); color:#2A1F22; border:none; border-radius:9px; padding:11px; font-weight:800; font-size:13px; letter-spacing:.02em; cursor:pointer;}
+  .sys-sched-btn:disabled{opacity:.55; cursor:default;}
+  .sys-sched-confirm{font-size:13.5px; line-height:1.55; color:#F5F3EE;}
+  .sys-sched-confirm b{color:var(--rose);}
+  .bubble p{margin:0 0 12px; white-space:pre-wrap;}
+  .bubble p:last-child{margin-bottom:0;}
+  .bubble p.dialogue-line{margin:10px 0;}
+  .bubble p.dialogue-line:first-child{margin-top:0;}
+  .bubble p.dialogue-line:last-child{margin-bottom:0;}
+  .bubble ul{margin:2px 0 10px; padding-left:18px;}
+  .bubble ul:last-child{margin-bottom:0;}
+  .bubble li{margin-bottom:4px;}
+  .bubble b{font-weight:700;}
+  .msg-media{display:block; width:100%; max-width:260px; border-radius:8px; margin-bottom:6px;}
+  .msg-actions{display:flex; gap:6px; padding:18px 2px 0; align-items:center;}
+  .msg-actions button{background:rgba(20,18,16,1); border:1px solid transparent; color:#F5F3EE; cursor:pointer; padding:8px; border-radius:8px; display:flex; align-items:center; transition:background .15s, color .15s;}
+  .msg-actions button:active{color:#F5F3EE; background:rgba(20,18,16,1);}
+
+  /* ---------- message long-press menu (old-paper, matches the letter of records) ---------- */
+  #msgCtxMenu{
+    position:fixed; z-index:30;
+    background: rgba(250,244,230,0.98);
+    border:1px solid rgba(59,42,46,0.18); border-radius:10px; padding:6px;
+    box-shadow:0 20px 50px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.25), inset 0 0 0 1px rgba(59,42,46,0.06);
+    display:none; flex-direction:column; min-width:150px; opacity:0;
+    transform:scale(0.97) translateY(3px); transform-origin:top left;
+    transition:opacity .32s ease, transform .32s ease; overflow:hidden;
+  }
+  #msgCtxMenu::before{
+    content:''; position:absolute; inset:0; pointer-events:none; opacity:.3; mix-blend-mode:multiply;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
+  }
+  #msgCtxMenu.open{opacity:1; transform:scale(1) translateY(0);}
+  #msgCtxMenu button{position:relative; z-index:1; background:none; border:none; color:var(--letter-ink); text-align:left; padding:11px 13px; font-family:'EB Garamond',serif; font-weight:600; font-size:15px; letter-spacing:.02em; cursor:pointer; border-radius:6px; display:flex; align-items:center; gap:9px; transition:background .12s ease;}
+  #msgCtxMenu button:active{background:rgba(59,42,46,0.1);}
+  #msgCtxMenu button.danger{color:var(--diary-wax);}
+  #msgCtxMenu button + button{margin-top:1px; border-top:1px solid var(--letter-line);}
+  #msgCtxOverlay{position:fixed; inset:0; z-index:29; display:none; background:rgba(0,0,0,0); transition:background .32s ease; pointer-events:none;}
+  #msgCtxOverlay.open{background:rgba(0,0,0,0.15); pointer-events:auto;}
+
+  /* ---------- media attach drawer (long-press send) ---------- */
+  #mediaDrawerOverlay{position:fixed; inset:0; z-index:39; background:rgba(0,0,0,0.4); display:none;}
+  #mediaDrawer{position:fixed; left:0; right:0; bottom:0; max-width:480px; margin:0 auto; z-index:40; background: rgba(250,244,230,0.98); border-radius:20px 20px 0 0; padding:8px 10px calc(18px + env(safe-area-inset-bottom)); box-shadow:0 -12px 40px rgba(0,0,0,0.3); transform:translateY(100%); transition:transform .22s ease;}
+  #mediaDrawer.open{transform:translateY(0);}
+  #mediaDrawer .drawer-handle{width:38px; height:4px; border-radius:3px; background:rgba(0,0,0,0.15); margin:4px auto 10px;}
+  #mediaDrawer .drawer-title{font-family:'Inter',sans-serif; font-size:12px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--letter-ink-soft); padding:0 6px 6px;}
+  #mediaDrawer button{width:100%; display:flex; align-items:center; gap:12px; background:none; border:none; border-radius:12px; color:var(--letter-ink); text-align:left; padding:13px 10px; font-family:'Inter',sans-serif; font-size:14.5px; font-weight:600; cursor:pointer; transition:background .12s;}
+  #mediaDrawer button:active{background:rgba(0,0,0,0.06);}
+  #addDrawerOverlay{position:fixed; inset:0; z-index:39; background:rgba(0,0,0,0.55); backdrop-filter:blur(2px); display:none;}
+  #addDrawer{position:fixed; left:50%; top:50%; width:calc(100% - 64px); max-width:330px; z-index:40; background:linear-gradient(165deg, #1E212B 0%, var(--panel-solid) 100%); border:1px solid var(--line); border-radius:22px; padding:28px 20px 22px; box-shadow:0 24px 60px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05); transform:translate(-50%, -50%) scale(0.92); opacity:0; pointer-events:none; transition:transform .2s cubic-bezier(.2,.9,.3,1.2), opacity .18s ease; text-align:center;}
+  #addDrawer.open{transform:translate(-50%, -50%) scale(1); opacity:1; pointer-events:auto;}
+  #addDrawer .drawer-eyebrow{font-family:'Inter',sans-serif; font-size:10px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:var(--text-dim); margin-bottom:7px;}
+  #addDrawer .drawer-title{font-family:'Fraunces',serif; font-weight:600; font-size:21px; letter-spacing:-.01em; color:var(--text); padding:0 4px;}
+  #addDrawer .drawer-rule{width:30px; height:1px; background:linear-gradient(90deg, transparent, var(--line), transparent); margin:16px auto 18px; opacity:.9;}
+  #addDrawer .drawer-row{display:flex; gap:10px;}
+  #addDrawer button{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; border-radius:15px; text-align:center; padding:19px 8px 17px; font-family:'Inter',sans-serif; font-size:12.5px; font-weight:700; letter-spacing:.02em; cursor:pointer; transition:transform .12s ease, background .12s ease, border-color .12s ease, box-shadow .12s ease;}
+  #addDrawer button:active{transform:scale(0.96);}
+  #addDrawer button svg{opacity:.8; transition:opacity .12s ease;}
+  #addDrawer button.secondary{background:rgba(255,255,255,0.04); border:1px solid var(--line); color:var(--text-dim);}
+  #addDrawer button.secondary:active{background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.2); color:var(--text);}
+  #addDrawer button.primary{background:radial-gradient(circle at 32% 22%, #FFFFFF 0%, #EDEAE0 55%, #DCD8CA 100%); border:1px solid rgba(255,255,255,0.5); color:#1A1204; box-shadow:0 10px 22px rgba(255,255,255,0.14), inset 0 1px 1px rgba(255,255,255,0.9);}
+  #addDrawer button.primary svg{opacity:1;}
+  #addDrawer button.primary:active{box-shadow:0 5px 14px rgba(255,255,255,0.1), inset 0 1px 1px rgba(255,255,255,0.9);}
+
+  #chatFooter{position:fixed; left:0; right:0; bottom:0; max-width:480px; margin:0 auto; z-index:5; background:linear-gradient(to top, rgba(13,15,19,0.92) 42%, rgba(13,15,19,0.75) 75%, rgba(13,15,19,0) 100%); padding-top:22px;
+    transform:translateZ(0); -webkit-transform:translateZ(0); backface-visibility:hidden; -webkit-backface-visibility:hidden; will-change:transform;}
+
+  #inputRow{display:flex; padding:0 0 env(safe-area-inset-bottom) 0; position:relative; z-index:2;}
+  #inputBar{flex:1; min-width:0; display:flex; flex-direction:column; background: rgba(255,251,240,0.98); border-top:1px solid var(--burgundy-line); border-radius:0; padding:8px 10px 10px; box-shadow:0 -6px 26px rgba(0,0,0,0.28);}
+  #textInput{width:100%; box-sizing:border-box; border:none; border-radius:0; padding:8px 8px 4px; font-family:'Inter',sans-serif; font-size:14.5px; background:none; color:var(--letter-ink); outline:none; resize:none; max-height:120px; overflow-y:auto; line-height:1.4; scrollbar-width:none; -ms-overflow-style:none;}
+  #textInput::-webkit-scrollbar{display:none;}
+  #textInput::placeholder{color:var(--letter-ink-soft);}
+  #inputControls{display:flex; align-items:center; justify-content:space-between; gap:6px; padding:4px 2px 0;}
+  #inputControlsLeft{display:flex; align-items:center; gap:2px;}
+  #panelBtn{background:none; border:none; color:var(--burgundy); width:32px;height:32px; border-radius:50%; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; transition:background .15s;}
+  #panelBtn:active{background:var(--burgundy-soft);}
+  #sendBtn{background:linear-gradient(160deg, var(--burgundy) 0%, #3F1017 100%); color:var(--paper-a); border:none; border-radius:14px; width:44px;height:44px; font-weight:700; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 14px rgba(59,42,46,0.35), inset 0 1px 0 rgba(255,255,255,0.15); transition:transform .1s, box-shadow .1s;}
+  #sendBtn:active{transform:scale(0.94); box-shadow:0 2px 8px rgba(59,42,46,0.3), inset 0 1px 0 rgba(255,255,255,0.15);}
+  #sendBtn svg{margin-left:1px;}
+  #sendBtn:disabled{opacity:.5; box-shadow:none; transform:none;}
+
+  .typing .bubble{display:flex; gap:4px; padding:14px 16px;}
+  .typing span{width:6px;height:6px;border-radius:50%;background:var(--letter-ink-soft);opacity:.4;animation:blink 1.1s infinite;}
+  .typing span:nth-child(2){animation-delay:.18s;} .typing span:nth-child(3){animation-delay:.36s;}
+  @keyframes blink{0%,80%,100%{opacity:.25;transform:translateY(0);}40%{opacity:.9;transform:translateY(-2px);}}
+
+  .warn{font-size:12px; color:var(--rose); text-align:center; padding:8px 20px; line-height:1.5; position:relative; z-index:2;}
+  #fileInput, #bgFileInput{display:none;}
+
+  /* ---------- memory modal ---------- */
+  #memoryModal{position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:20; padding:20px;}
+  #memoryModal .sheet{width:100%; max-width:360px; background:var(--panel-solid); border-radius:18px; padding:20px 18px 22px; max-height:70vh; overflow-y:auto; box-shadow:0 24px 60px rgba(0,0,0,0.55); border:1px solid var(--line);}
+
+  #chatSettingsModal{position:fixed; inset:0; background:transparent; display:none; z-index:20;}
+  #chatSettingsModal .sheet{position:absolute; top:calc(50px + env(safe-area-inset-top)); right:14px; width:200px; max-width:62vw; background: var(--paper-a); border-radius:16px; padding:6px; max-height:70vh; overflow-y:auto; box-shadow:0 18px 44px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.2); border:1px solid rgba(59,42,46,0.16); transform-origin:top right;}
+  #chatSettingsModal h3{margin:0; padding:10px 12px 8px; font-family:'Fraunces',serif; font-size:14.5px; font-weight:600; color:var(--letter-ink); border-bottom:1px solid rgba(0,0,0,0.1);}
+  #chatSettingsModal .settings-btn{width:100%; background:none; border:none; border-radius:10px; color:var(--letter-ink); text-align:left; padding:11px 10px; font-family:'Inter',sans-serif; font-size:13.5px; font-weight:500; cursor:pointer; margin:2px 0 0; transition:background .12s;}
+  #chatSettingsModal .settings-btn:active{background:rgba(0,0,0,0.06);}
+  #memoryModal h3, #chatSettingsModal h3{margin:0 0 4px; font-family:'Fraunces',serif; font-size:16px;}
+  #memoryModal p.sub, #chatSettingsModal p.sub{margin:0 0 14px; font-size:12px; color:var(--text-dim);}
+  #memoryContent{font-size:13.5px; line-height:1.65; color:var(--text); white-space:pre-wrap;}
+  #memoryModal button#closeMemoryBtn{margin-top:16px; width:100%; background:var(--bg-elev); border:1px solid var(--line); color:var(--text); border-radius:12px; padding:12px; font-size:13.5px; cursor:pointer;}
+
+  /* ---------- character panel modal (Victorian letter) ---------- */
+  #panelModal{position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:20; padding:0; opacity:0; transition:opacity .24s ease;}
+  #panelModal.is-open{opacity:1;}
+  #panelModal .sheet{transform:translateY(36px); opacity:0; transition:transform .3s cubic-bezier(.22,.61,.36,1), opacity .24s ease;}
+  #panelModal.is-open .sheet{transform:translateY(0); opacity:1;}
+  #panelModal .sheet{
+    position:relative; width:100%; max-width:none; height:100%;
+    background: linear-gradient(170deg, var(--paper-a) 0%, var(--paper-b) 100%);
+    background-image:
+      radial-gradient(circle at 10% 6%, rgba(91,36,48,0.05), transparent 42%),
+      radial-gradient(circle at 90% 94%, rgba(91,36,48,0.05), transparent 42%),
+      linear-gradient(170deg, var(--paper-a) 0%, var(--paper-b) 100%);
+    border-radius:0;
+    max-height:100vh; display:flex; flex-direction:column; overflow:hidden;
+    box-shadow:none;
+    border:none;
+  }
+  #panelModal .panel-header{padding:calc(env(safe-area-inset-top, 0px) + 30px) 20px 16px; margin-bottom:30px;}
+  #panelModal .sheet-scroll{padding:0 20px calc(env(safe-area-inset-bottom, 0px) + 26px) 20px;}
+  #panelModal .sheet::before{
+    content:''; position:absolute; inset:0; pointer-events:none; opacity:.35; mix-blend-mode:multiply; border-radius:3px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
+  }
+  .panel-header{position:relative; z-index:2; flex-shrink:0; display:flex; align-items:center; justify-content:space-between; gap:18px; padding-bottom:16px; border-bottom:1px solid var(--burgundy-line);}
+  .sheet-scroll{flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; scrollbar-width:none; -ms-overflow-style:none;}
+  .sheet-scroll::-webkit-scrollbar{display:none;}
+  .panel-header h3{margin:0; font-family:'Times New Roman', Times, serif; font-style:italic; font-weight:700; font-size:28px; line-height:1; color:var(--burgundy); letter-spacing:.005em;}
+  .panel-close{background:transparent; border:none; color:var(--letter-ink-soft); width:30px; height:30px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; align-self:center;}
+  .panel-close:active{background:var(--burgundy-soft); color:var(--burgundy);}
+  .panel-section{margin-bottom:70px; position:relative;}
+  .panel-section:last-child{margin-bottom:0;}
+  .panel-sec-title{font-family:'EB Garamond', serif; font-style:normal; font-size:17px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--burgundy); margin-bottom:16px; display:block; width:100%; cursor:pointer; -webkit-tap-highlight-color:transparent;}
+  .panel-sec-title:active{opacity:.6;}
+  .panel-sec-title::before{content:'[ '; }
+  .panel-sec-title::after{content:' ]'; }
+
+  /* ---------- inventory-only modal (opened from the "expand" button on the Inventory
+     section title) — same paper theme, size, and shape as the Letter of Records itself,
+     just scoped to Inventory alone and rendered with larger chips since there's no other
+     section competing for space. ---------- */
+  #invModal{position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:22; padding:0; opacity:0; transition:opacity .24s ease;}
+  #invModal.is-open{opacity:1;}
+  #invModal .sheet{transform:translateY(36px); opacity:0; transition:transform .3s cubic-bezier(.22,.61,.36,1), opacity .24s ease;}
+  #invModal.is-open .sheet{transform:translateY(0); opacity:1;}
+  #invModal .sheet{
+    position:relative; width:100%; max-width:none; height:100%;
+    background: linear-gradient(170deg, var(--paper-a) 0%, var(--paper-b) 100%);
+    background-image:
+      radial-gradient(circle at 10% 6%, rgba(91,36,48,0.05), transparent 42%),
+      radial-gradient(circle at 90% 94%, rgba(91,36,48,0.05), transparent 42%),
+      linear-gradient(170deg, var(--paper-a) 0%, var(--paper-b) 100%);
+    border-radius:0;
+    max-height:100vh; display:flex; flex-direction:column; overflow:hidden;
+    box-shadow:none;
+    border:none;
+  }
+  #invModal .panel-header{padding:calc(env(safe-area-inset-top, 0px) + 30px) 20px 16px; margin-bottom:22px;}
+  #invModal .sheet-scroll{padding:0 26px calc(env(safe-area-inset-bottom, 0px) + 26px) 20px;}
+  #invModal .sheet::before{
+    content:''; position:absolute; inset:0; pointer-events:none; opacity:.35; mix-blend-mode:multiply; border-radius:3px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
+  }
+  /* Larger chips for the dedicated inventory page — same look as .panel-chip, just roomier
+     since it's the only thing on the page. */
+  .panel-chips.chips-lg{gap:9px;}
+  .panel-chips.chips-lg .panel-chip{font-size:15.5px; padding:8px 16px;}
+  .panel-chips.chips-lg .panel-chip-status{font-size:13.5px;}
+  /* "Expand inventory" button that sits inline with the Inventory section title, opening
+     the dedicated larger-size page above. */
+  .panel-inv-expand-btn{background:transparent; border:1px solid var(--burgundy-line); color:var(--burgundy); width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; -webkit-tap-highlight-color:transparent;}
+  .panel-inv-expand-btn:active{background:var(--burgundy-soft);}
+
+  /* ---------- Letter of Records bottom tab bar: switches the sheet between four scoped
+     views (Identity/Timeline/Status, Finances+Inventory, Skills+Learning, Relationships+
+     Milestones+catch-all) instead of one long continuous scroll — see panelTabForCategory
+     in script.js for the grouping. Sits as a flex-shrink:0 footer inside #panelModal .sheet,
+     below .sheet-scroll (which takes flex:1), so no fixed-position/padding hack is needed. */
+  #panelTabBar{flex-shrink:0; position:relative; z-index:2; display:flex; align-items:stretch; justify-content:space-around; gap:4px; padding:8px 10px calc(env(safe-area-inset-bottom, 0px) + 10px); background:var(--paper-a); border-top:1px solid var(--burgundy-line);}
+  .panel-tab{background:none; border:none; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; flex:1; padding:7px 4px; border-radius:12px; color:var(--letter-ink-soft); cursor:pointer; font-family:'Inter',sans-serif; font-size:10px; font-weight:700; letter-spacing:.02em; transition:color .15s ease, background .15s ease; -webkit-tap-highlight-color:transparent;}
+  .panel-tab svg{opacity:.6; transition:opacity .15s ease;}
+  .panel-tab.active{color:var(--burgundy); background:var(--burgundy-soft);}
+  .panel-tab.active svg{opacity:1;}
+
+  /* ---------- section info modal (what a Letter of Records section is / how it works) ---------- */
+  #catInfoModal{position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:25; padding:20px;}
+  #catInfoModal .sheet{
+    position:relative; width:100%; max-width:340px;
+    background: linear-gradient(170deg, var(--paper-a) 0%, var(--paper-b) 100%);
+    border-radius:3px;
+    max-height:76vh; display:flex; flex-direction:column; overflow:hidden;
+    box-shadow:0 16px 40px rgba(0,0,0,0.42), inset 0 0 0 1px rgba(59,42,46,0.1);
+    border:1px solid rgba(59,42,46,0.16);
+  }
+  #catInfoModal .panel-header{padding:24px 0 14px; margin-bottom:20px;}
+  #catInfoModal .panel-header h3{font-size:22px;}
+  #catInfoModal .sheet-scroll{padding:0 22px 22px;}
+
+  /* ---------- relationship detail popup (tap a name on the Letter of Records) — same
+     paper theme and card shape as the section-info modal above, just a different trigger
+     and content. ---------- */
+  #relInfoModal{position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:26; padding:20px; opacity:0; transition:opacity .22s ease;}
+  #relInfoModal.is-open{opacity:1;}
+  #relInfoModal .sheet{
+    position:relative; width:100%; max-width:360px;
+    background: linear-gradient(170deg, var(--paper-a) 0%, var(--paper-b) 100%);
+    border-radius:3px;
+    max-height:76vh; display:flex; flex-direction:column; overflow:hidden;
+    box-shadow:0 16px 40px rgba(0,0,0,0.42), inset 0 0 0 1px rgba(59,42,46,0.1);
+    border:1px solid rgba(59,42,46,0.16);
+    transform:translateY(24px) scale(0.98); opacity:0;
+    transition:transform .26s cubic-bezier(.22,.61,.36,1), opacity .22s ease;
+  }
+  #relInfoModal.is-open .sheet{transform:translateY(0) scale(1); opacity:1;}
+  #relInfoModal .panel-header{padding:24px 0 14px; margin-bottom:20px;}
+  #relInfoModal .panel-header h3{font-size:22px; font-style:italic;}
+  #relInfoModal .sheet-scroll{padding:0 22px 22px;}
+  /* A Relationships name on the main sheet is tappable — dotted underline hints there's
+     more behind it, tapping opens the full history in #relInfoModal above. */
+  .panel-rel-name{cursor:pointer; border-bottom:1px dotted var(--burgundy-line); -webkit-tap-highlight-color:transparent;}
+  .panel-rel-name:active{opacity:.6;}
+  .panel-rel-label{font-family:'Caveat', cursive !important; font-weight:700 !important; font-size:20px !important; font-style:normal; letter-spacing:.01em; opacity:.85;}
+  /* ---------- inventory item long-press action sheet (Equip/Unequip, Change Photo) —
+     a true bottom-up sheet (slides up from the screen's bottom edge), distinct from the
+     centered .sheet modals above. ---------- */
+  #itemActionSheet{position:fixed; inset:0; z-index:30; display:none;}
+  #itemActionSheet.is-open{display:block;}
+  #itemActionSheet .item-action-backdrop{position:absolute; inset:0; background:rgba(0,0,0,0.55); opacity:0; transition:opacity .22s ease;}
+  #itemActionSheet.is-open .item-action-backdrop{opacity:1;}
+  #itemActionSheet .item-action-panel{
+    position:absolute; left:50%; bottom:0; transform:translate(-50%, 100%); width:100%; max-width:480px;
+    background: linear-gradient(170deg, var(--paper-a) 0%, var(--paper-b) 100%);
+    border-radius:20px 20px 0 0; padding:10px 20px calc(env(safe-area-inset-bottom, 0px) + 22px);
+    box-shadow:0 -14px 40px rgba(0,0,0,0.4);
+    transition:transform .28s cubic-bezier(.22,.61,.36,1);
+  }
+  #itemActionSheet.is-open .item-action-panel{transform:translate(-50%, 0);}
+  .item-action-handle{width:36px; height:4px; border-radius:3px; background:var(--burgundy-line); margin:6px auto 14px;}
+  .item-action-header{margin-bottom:16px; padding-bottom:14px; border-bottom:1px solid var(--letter-line);}
+  .item-action-name{font-family:'Fraunces',serif; font-weight:700; font-size:18px; color:var(--letter-ink); word-break:break-word;}
+  .item-action-status{font-family:'EB Garamond', serif; font-size:14px; color:var(--letter-ink-soft); margin-top:4px;}
+  .item-action-btn{display:block; width:100%; text-align:left; background:rgba(255,255,255,0.35); border:1px solid var(--burgundy-line); color:var(--burgundy); font-family:'EB Garamond', serif; font-weight:700; font-size:15.5px; letter-spacing:.02em; padding:13px 16px; border-radius:12px; margin-bottom:10px; cursor:pointer; -webkit-tap-highlight-color:transparent;}
+  .item-action-btn:active{background:var(--burgundy-soft);}
+  .item-action-row{display:flex; gap:10px;}
+  .item-action-btn-half{flex:1; margin-bottom:0; text-align:center;}
+  .item-action-danger{color:var(--rose); border-color:var(--rose);}
+  .item-action-danger:active{background:rgba(224,99,122,0.12);}
+  .cat-info-block{margin-bottom:20px;}
+  .cat-info-block:last-child{margin-bottom:0;}
+  .cat-info-label{font-family:'EB Garamond', serif; font-size:12.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--burgundy); opacity:.8; margin-bottom:6px;}
+  .cat-info-text{font-family:'EB Garamond', serif; font-size:15.5px; line-height:1.6; color:var(--letter-ink); white-space:pre-line;}
+  /* Inventory's "Current Items" block inside the section-info modal — groups items by their
+     status suffix (Equipped, Sheathed, etc.) so carry/equip state reads at a glance without
+     opening the Letter of Records or the dedicated Inventory page. Read-only display. */
+  .cat-info-status-group{font-family:'EB Garamond', serif; font-size:12.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--burgundy); opacity:.7; margin:14px 0 4px;}
+  .cat-info-status-group:first-child{margin-top:0;}
+  .cat-info-item-row{padding:3px 0 3px 4px; font-family:'EB Garamond', serif; font-size:15.5px; color:var(--letter-ink);}
+  .panel-row{display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 10px; padding:10px 0; font-family:'EB Garamond', serif; font-size:15.5px; color:var(--letter-ink);}
+  .panel-k{color:var(--burgundy); font-weight:700; font-style:normal; font-size:14.5px; letter-spacing:.03em; text-transform:uppercase; flex-shrink:0; opacity:.85;}
+  .panel-v{color:var(--letter-ink); font-weight:700; font-family:'Caveat', cursive; font-size:24px; letter-spacing:.01em; text-align:right; flex:1 1 auto; min-width:120px; margin-left:auto; white-space:normal; overflow-wrap:break-word; word-break:break-word;}
+  .panel-chips{display:flex; flex-wrap:wrap; gap:9px;}
+  .panel-chip{background:rgba(255,255,255,0.35); border:1px solid var(--burgundy-line); color:var(--letter-ink); font-family:'EB Garamond', serif; font-weight:600; font-size:14.5px; letter-spacing:.02em; padding:7px 15px; border-radius:1px;}
+  .panel-chip-status{font-weight:400; font-style:italic; opacity:.72; margin-left:6px;}
+  /* A Scheduled Events chip whose day has already arrived stays on the sheet permanently —
+     it just dims to read as "passed" instead of being removed. */
+  .panel-chip.is-past{opacity:.42;}
+  /* Inventory drag-to-merge: long-press a chip to arm it, then drag it onto another to
+     merge them. The dragged item's floating "ghost" copy, the drop-target highlight, and
+     the editable pending-merge chip all reuse .panel-chip's own look (via className, not
+     duplicated values) so a dragged/merged item never looks like a different kind of
+     element than the ones sitting still on the sheet. Every chip here also carries its own
+     delete cross opposite the item name (see .panel-chip-del below) — that's what the
+     inline-flex + space-between is for; plain, non-interactive chips elsewhere never get
+     the [data-id] attribute at all, so this layout never applies to them. */
+  .panel-chip[data-id]{display:inline-flex; align-items:center; justify-content:space-between; gap:10px; transition:transform .15s ease, box-shadow .15s ease;}
+  .panel-chip-label{overflow-wrap:break-word; word-break:break-word;}
+  .panel-chip-del{flex-shrink:0; width:18px; height:18px; border:none; background:transparent; color:var(--burgundy); display:flex; align-items:center; justify-content:center; cursor:pointer; font-family:inherit; font-size:13px; line-height:1; padding:0; opacity:.55; transition:opacity .15s, background .15s; -webkit-tap-highlight-color:transparent;}
+  .panel-chip-del:active{opacity:1; background:rgba(255,60,60,0.22);}
+  .chips-lg .panel-chip-del{width:20px; height:20px; font-size:14.5px;}
+  .panel-chip.is-pressing{transform:scale(0.94); box-shadow:0 0 0 2px var(--burgundy-line) inset;}
+  .panel-chip.is-dragging{opacity:.4;}
+  .panel-chip.is-drop-target{outline:2px dashed var(--burgundy);}
+  .panel-chip-ghost{position:fixed; margin:0; pointer-events:none; z-index:9999; box-sizing:border-box; display:block; background:rgba(255,251,240,0.97); box-shadow:0 10px 26px rgba(0,0,0,0.4);}
+  /* The pending-merge bar now renders as a chip in place, within the normal `.panel-chips`
+     flex flow — `width:100%` makes it take its own full row (rather than sitting alongside
+     other chips) since it needs room for both name options plus confirm/cancel, but it
+     otherwise appears exactly where the drop-target item was, not pinned to the list top. */
+  /* ---------- inventory cards ----------
+     Same grid mechanics as before (auto-fill columns), but rows are no longer forced
+     square — align-items:start lets each card size to its own fixed-height slot instead
+     of stretching to match its row neighbors. Ported from the inv-card-preview-3 design. */
+  .panel-chips.inv-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(100px, 1fr)); gap:12px; align-items:start;}
+  .panel-chips.inv-grid.chips-lg{grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:14px;}
+  .panel-chip.inv-slot{
+    position:relative; width:100%; padding:0; border-radius:9px; overflow:hidden;
+    background:rgba(255,255,255,0.4); border:2px solid var(--burgundy-line);
+    box-shadow:inset 0 1px 3px rgba(255,255,255,0.4), 0 2px 6px rgba(0,0,0,0.14);
+    cursor:pointer; display:block; transition:transform .12s ease, box-shadow .12s ease;
+    -webkit-user-select:none; -moz-user-select:none; user-select:none;
+    -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent; touch-action:pan-y;
+  }
+  .panel-chip.inv-slot:active{transform:scale(0.965);}
+  .panel-chip.inv-slot.is-past{opacity:.45;}
+  /* Fixed slot height — the photo and the name both live inside this box, rather than
+     the name's own text length deciding how tall the card is. */
+  .inv-slot-main{flex:1; min-width:0; height:130px; display:flex; flex-direction:column;}
+  .chips-lg .inv-slot-main{height:150px;}
+  /* The photo (or the glyph placeholder) fills the entire card as a background layer,
+     taken out of flow — the card's real height comes purely from .inv-slot-info (the
+     name text) below, and the image just covers whatever height that ends up being. */
+  .inv-slot-img{
+    position:absolute; inset:0; z-index:0;
+    display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(160deg, rgba(91,36,48,0.16), rgba(91,36,48,0.05));
+  }
+  .inv-slot-icon{font-family:'Fraunces',serif; font-weight:700; font-size:20px; letter-spacing:.01em; color:var(--burgundy); user-select:none;}
+  .chips-lg .inv-slot-icon{font-size:24px;}
+  .inv-slot-photo{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:none;}
+  .inv-slot-img.has-photo .inv-slot-icon{display:none;}
+  .inv-slot-img.has-photo .inv-slot-photo{display:block;}
+  /* Small hint that appears mid-press so a long-press doesn't feel like a dead tap —
+     only ever toggled on by JS for cards flagged data-photo-editable (the main Letter
+     of Records view; the dedicated drag-to-merge Inventory page leaves this alone so it
+     never fights with its own long-press-to-drag gesture). */
+  .inv-slot-img::before{
+    content:'Hold to add photo'; position:absolute; inset:0; z-index:3;
+    display:flex; align-items:center; justify-content:center; text-align:center; padding:0 6px;
+    font-family:'EB Garamond',serif; font-style:italic; font-weight:600; font-size:10px;
+    color:var(--paper-a); background:rgba(46,32,36,0.55);
+    opacity:0; pointer-events:none; transition:opacity .15s ease;
+  }
+  .panel-chip.inv-slot.is-photo-pressing .inv-slot-img::before{opacity:1;}
+  /* #N corner tag and name are rendered in white with a soft dark shadow so they stay
+     legible whether the card is showing its plain paper background or a photo. */
+  .inv-slot .panel-chip-num{position:absolute; top:5px; left:7px; z-index:2; font-size:10px; font-weight:700; opacity:.9; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,0.55); margin:0;}
+  .inv-slot .panel-chip-qty{position:absolute; top:5px; right:7px; z-index:2; font-size:10.5px; font-weight:800; opacity:1; margin:0; color:var(--burgundy); background:#fff; padding:1px 6px; border-radius:8px;}
+  /* Name sits directly on top of the image with no panel behind it — height comes purely
+     from this block's own padding/line-height, and the image just fills whatever that
+     ends up being. */
+  .inv-slot-info{position:relative; z-index:1; margin-top:auto; padding:8px 8px 10px; text-align:center;}
+  .inv-slot-name{
+    font-family:'EB Garamond',serif; font-weight:700; font-size:13px; line-height:1.35; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,0.55);
+    display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:1; overflow:hidden; text-overflow:ellipsis; word-break:break-word;
+  }
+  .chips-lg .inv-slot-name{font-size:14.5px;}
+  /* The drag-to-merge delete cross (dedicated Inventory page only) sits as a small
+     corner button on the card rather than inline text next to a label. */
+  .inv-slot .panel-chip-del{position:absolute; top:-6px; right:-6px; z-index:4; width:20px; height:20px; background:var(--panel-solid); border:1px solid var(--burgundy-line); border-radius:50%; opacity:.85;}
+  .inv-slot .panel-chip-del:active{opacity:1;}
+  /* The pending-merge confirm bar is the one item in an inv-grid that isn't a square
+     slot — it needs room for two name choices plus actions, so it spans the full grid
+     row instead of being squeezed into a single cell. */
+  .panel-chips.inv-grid .panel-chip.panel-merge-bar{grid-column:1 / -1; aspect-ratio:auto; padding:10px;}
+  .panel-merge-bar{display:flex; flex-direction:column; gap:8px; width:100%; box-sizing:border-box;}
+  .panel-merge-options{display:flex; flex-direction:column; gap:6px;}
+  .panel-merge-option{width:100%; box-sizing:border-box; text-align:left; background:transparent; border:1px solid var(--burgundy-line); color:inherit; font:inherit; border-radius:1px; padding:6px 10px; cursor:pointer; -webkit-tap-highlight-color:transparent; overflow-wrap:break-word; word-break:break-word;}
+  .panel-merge-option.is-selected{background:var(--burgundy); color:#fdf6e3; border-color:var(--burgundy);}
+  .panel-merge-actions{display:flex; justify-content:flex-end; gap:8px;}
+  .panel-merge-confirm, .panel-merge-cancel{flex-shrink:0; width:26px; height:26px; border-radius:50%; border:1px solid var(--burgundy-line); display:flex; align-items:center; justify-content:center; cursor:pointer; font-family:inherit; font-size:13px; line-height:1; padding:0; -webkit-tap-highlight-color:transparent;}
+  .panel-merge-confirm{background:var(--burgundy); color:#fdf6e3;}
+  .panel-merge-cancel{background:transparent; color:var(--burgundy);}
+  .panel-merge-hint{font-family:'EB Garamond', serif; font-size:12.5px; font-style:italic; color:var(--letter-ink-soft); margin-bottom:16px;}
+  .panel-empty{font-family:'EB Garamond', serif; font-size:14px; color:var(--letter-ink-soft); font-style:italic;}
+  /* Letter of Records: once a Skills & Abilities or Scheduled Events list grows past a
+     handful of chips, everything beyond the first page is tucked away behind a small
+     "show more" toggle so the sheet doesn't turn into an endless scroll. Inventory is
+     exempt — it always renders fully open. Purely a display toggle — no data is hidden
+     or changed, just not rendered until asked for. */
+  .panel-inv-hidden-chips{display:contents;}
+  .panel-inv-hidden-chips[hidden]{display:none;}
+  .panel-inv-toggle-btn{display:flex; align-items:center; justify-content:center; gap:6px; width:100%; margin-top:12px; background:transparent; border:1px dashed var(--burgundy-line); color:var(--burgundy); font-family:'EB Garamond', serif; font-style:italic; font-size:13px; letter-spacing:.02em; padding:8px 12px; border-radius:2px; cursor:pointer; -webkit-tap-highlight-color:transparent;}
+  .panel-inv-toggle-btn svg{transition:transform .2s ease; flex-shrink:0;}
+  .panel-inv-toggle-btn.is-expanded svg{transform:rotate(180deg);}
+  .panel-skill-row{padding:11px 0;}
+  .panel-skill-head{display:flex; flex-direction:column; align-items:flex-start; gap:3px; margin-bottom:7px;}
+  .panel-skill-head .panel-k{opacity:.85; display:block; max-width:100%; white-space:normal; overflow-wrap:break-word; word-break:normal; hyphens:none;}
+  .panel-skill-pct{font-family:'Caveat', cursive; font-weight:700; font-size:21px; color:var(--burgundy); letter-spacing:.01em;}
+  .panel-skill-pct.is-mastered{color:#8a6d1a;}
+  .panel-skill-bar{height:6px; border-radius:3px; background:rgba(91,36,48,0.12); border:1px solid var(--burgundy-line); overflow:hidden;}
+  .panel-skill-fill{height:100%; border-radius:2px; background:linear-gradient(90deg, var(--burgundy) 0%, #8B5560 100%); transition:width .3s ease;}
+  .panel-skill-fill.is-mastered{background:linear-gradient(90deg, #a3811f 0%, #d4af37 100%);}
+  .panel-status{font-family:'EB Garamond', serif; font-style:italic; font-size:17px; color:var(--letter-ink); line-height:1.75; background:rgba(255,255,255,0.32); border-left:2px solid var(--burgundy); padding:14px 17px;}
+  /* Equip compass — read-only visual summary of Inventory's own on-body statuses (Equipped/
+     Worn/Sheathed/Held), sitting on the Finances+Inventory tab between the two. Same
+     parchment/burgundy palette as the rest of the Letter of Records — no new colors, no
+     textures, nothing rotated. */
+  .equip-compass-wrap{display:flex; flex-direction:column; align-items:center;}
+  .equip-compass-wrap{display:flex; flex-direction:column; align-items:stretch;}
+  /* Box around the equip slots: contained within the sheet-scroll's own side padding
+     (does NOT bleed to the screen edges) — its own 1px border on all four sides is what
+     reads as the box, including the left/right vertical lines. Small bottom margin so it
+     sits directly above the Body/legend list, and a tall min-height so it reads as a long
+     vertical card rather than a tightly-fit strip. */
+  .equip-box{position:relative; border:none; background:rgba(255,255,255,0.22); margin:0 -20px 10px -20px; padding:0; height:400px;}
+  .equip-body-row{display:flex; align-items:stretch; gap:16px; margin:0; height:100%; padding:0;}
+  .equip-hub-col{flex-shrink:0; display:flex; flex-direction:column; border-right:none; width:96px;}
+  .equip-hub-top{height:200px; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--burgundy-line); cursor:pointer; overflow:hidden; padding:0;}
+  .equip-hub-bottom{height:200px; display:flex; align-items:center; justify-content:center; cursor:pointer; overflow:hidden; padding:0;}
+  .equip-hub-placeholder{font-family:'EB Garamond', serif; font-size:11px; font-style:italic; color:var(--letter-ink-soft); text-align:center; padding:0 8px;}
+  .equip-hub-img{width:100%; height:100%; object-fit:cover; display:block;}
+  .equip-hub-icon{width:70px; height:70px; border-radius:2px; background:rgba(255,255,255,0.35); border:1px solid var(--burgundy-line); display:flex; align-items:center; justify-content:center; font-size:1.85rem;}
+  .equip-grid{flex:1; min-width:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); row-gap:16px; column-gap:2px; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; align-content:start; scrollbar-width:none; -ms-overflow-style:none; padding:14px 0 16px;}
+  .equip-grid::-webkit-scrollbar{display:none;}
+  .equip-cell{min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-start;}
+  .equip-slot-icon{width:100%; aspect-ratio:1; max-width:60%; border-radius:2px; display:flex; align-items:center; justify-content:center; font-size:.9rem; background:rgba(255,255,255,0.35); border:1px solid var(--burgundy-line); overflow:hidden;}
+  /* A slot currently holding an "Equipped" item (see EQUIP_ON_BODY_STATUSES /
+     renderEquipCompassHtml) gets a solid border and its item's own photo (or a name-glyph
+     fallback) instead of the plain placeholder icon, plus its name printed below the label. */
+  .equip-slot-icon.has-item{border-color:var(--burgundy); border-width:2px; background:rgba(255,255,255,0.55); font-weight:700; color:var(--burgundy);}
+  .equip-slot-photo{width:100%; height:100%; object-fit:cover; display:block;}
+  .equip-cell.is-filled .equip-slot-label{color:var(--burgundy);}
+  .equip-slot-item-name{font-family:'EB Garamond', serif; font-size:9.5px; font-style:italic; color:var(--letter-ink-soft); margin-top:2px; text-align:center; max-width:80px; word-break:break-word;}
+  .equip-slot-label{font-family:'EB Garamond', serif; font-size:8.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--letter-ink-soft); margin-top:8px; white-space:normal; text-align:center; max-width:80px; word-break:break-word;}
+  .equip-legend{width:100%;}
+  .equip-legend-section{margin-bottom:32px;}
+  .equip-legend-section:last-child{margin-bottom:4px;}
+  .equip-legend-section-title{font-family:'EB Garamond', serif; font-size:11.5px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--burgundy); opacity:.85; margin-bottom:8px;}
+  .equip-legend-row{display:flex; align-items:flex-start; gap:13px; padding:12px 0; border-top:1px solid var(--letter-line);}
+  .equip-legend-row:first-child{border-top:none; padding-top:2px;}
+  .equip-legend-icon{font-size:.85rem; width:24px; height:24px; border-radius:3px; display:flex; align-items:center; justify-content:center; flex-shrink:0; opacity:.35; margin-top:1px; background:rgba(255,255,255,0.3); border:1px solid var(--letter-line);}
+  .equip-legend-icon.is-filled{opacity:1; border-color:var(--burgundy-line);}
+  .equip-legend-text{flex:1; min-width:0; display:flex; flex-direction:column; gap:4px;}
+  .equip-legend-label{font-family:'EB Garamond', serif; font-size:10.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--letter-ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .equip-legend-label.is-filled{color:var(--burgundy);}
+  .equip-legend-name{font-family:'EB Garamond', serif; font-size:15.5px; color:var(--letter-ink); line-height:1.35; word-break:break-word;}
+  .equip-legend-name.is-empty{color:var(--letter-ink-soft); font-style:italic; opacity:.75;}
+  .equip-accessories-title{font-family:'EB Garamond', serif; font-size:12.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--burgundy); opacity:.8; margin:16px 0 8px; width:100%; max-width:320px;}
+  .equip-accessories{display:flex; flex-wrap:wrap; gap:7px; width:100%; max-width:320px;}
+  .equip-accessory-chip{font-family:'EB Garamond', serif; font-weight:600; font-size:13px; color:var(--letter-ink); background:rgba(255,255,255,0.35); border:1px solid var(--burgundy-line); border-radius:1px; padding:5px 12px;}
+
+
+</style>
+
+<!-- ================================================================
+     SECTION 4 — INSIDE THE CHATROOM: HTML
+     (chat screen itself, plus the modals/sheets only ever opened
+     from within a chat: story options, memory, Letter of Records,
+     inventory, section/relationship info popups, item actions)
+     ================================================================ -->
+<div id="chatScreen">
+    <div id="chatBg"></div>
+    <div id="chatBody">
+      <div id="chatHeader">
+        <button class="iconbtn" id="chatBackBtn"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m15 18-6-6 6-6"/></svg></button>
+        <div id="chatTitleWrap">
+          <div id="chatAvatar" class="placeholder">葉</div>
+          <span id="chatName">—</span>
+        </div>
+        <button class="iconbtn" id="chatSettingsBtn" title="Story options">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+      </div>
+      <div id="log"></div>
+    </div>
+
+    <div id="msgCtxOverlay"></div>
+    <div id="msgCtxMenu">
+      <button id="msgCtxCopy"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy</button>
+      <button id="msgCtxDelete" class="danger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg> Delete</button>
+    </div>
+    <div id="chatFooter">
+      <div id="inputRow">
+        <div id="inputBar">
+          <textarea id="textInput" placeholder="Say or do something..." rows="1"></textarea>
+          <div id="inputControls">
+            <div id="inputControlsLeft">
+              <button id="panelBtn" title="Letter of records">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3.5h11.5L20 7v13.5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z"/><path d="M16.5 3.5V7H20"/><path d="M8 12h8M8 15.5h8M8 8.5h4"/></svg>
+              </button>
+            </div>
+            <button id="sendBtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.4 22 12 3.4 3.6 3 10l13 2-13 2z"/></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="mediaDrawerOverlay"></div>
+    <div id="mediaDrawer">
+      <div class="drawer-handle"></div>
+      <div class="drawer-title">Attach to message</div>
+      <button id="mediaPhotoBtn"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg> Photo</button>
+      <button id="mediaGifBtn"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 13v-2a1 1 0 0 1 1-1h1M8 13a1 1 0 0 0 1 1h1M14 10v6M18 10h-3v6M18 13h-2.5"/></svg> GIF</button>
+      <button id="mediaVideoBtn"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="m22 8.5-6 3.5 6 3.5v-7Z"/></svg> Video</button>
+    </div>
+    <input type="file" id="mediaFileInput" accept="image/*" style="display:none">
+  </div>
+<div id="chatSettingsModal">
+  <div class="sheet">
+    <h3>Story options</h3>
+    <button class="settings-btn" id="csMemoryBtn">View memory</button>
+    <button class="settings-btn" id="csExportBtn">Download this story</button>
+    <button class="settings-btn" id="csImportIntoBtn">Import into this world</button>
+    <input type="file" id="csImportIntoFileInput" accept="application/json" style="display:none">
+  </div>
+</div>
+<div id="memoryModal">
+  <div class="sheet">
+    <h3>Story memory</h3>
+    <p class="sub">What the AI currently remembers about your story so far</p>
+    <div id="memoryContent">Nothing remembered yet — memory builds up as you play.</div>
+    <button id="closeMemoryBtn">Close</button>
+  </div>
+</div>
+<div id="panelModal">
+  <div class="sheet">
+    <div class="sheet-scroll">
+      <div class="panel-header">
+        <h3 id="panelWorldName">A letter of records</h3>
+        <button id="closePanelBtn" class="panel-close" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+      <div id="panelContent"></div>
+    </div>
+    <div id="panelTabBar">
+      <button class="panel-tab active" data-tab="1" title="Identity">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="11" r="2.3"/><path d="M5.5 16c.6-1.8 2-2.7 3-2.7s2.4.9 3 2.7"/><path d="M14.5 9.5h4M14.5 13h4"/></svg>
+        <span>Identity</span>
+      </button>
+      <button class="panel-tab" data-tab="2" title="Holding">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7V5.2a3 3 0 0 1 6 0V7"/><rect x="5" y="7" width="14" height="14" rx="3"/><path d="M9 11h6"/><rect x="9" y="14" width="6" height="4" rx="1"/></svg>
+        <span>Holding</span>
+      </button>
+      <button class="panel-tab" data-tab="3" title="Skills">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg>
+        <span>Skills</span>
+      </button>
+      <button class="panel-tab" data-tab="4" title="Ties">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="3"/><path d="M3.5 19c0-3 2.5-5.2 5.5-5.2s5.5 2.2 5.5 5.2"/><path d="M16.5 8.2a2.5 2.5 0 1 0-2.2-3.9"/><path d="M15 13.3c2.4.5 4 2.6 4 5.2"/></svg>
+        <span>Ties</span>
+      </button>
+    </div>
+  </div>
+</div>
+<div id="invModal">
+  <div class="sheet">
+    <div class="sheet-scroll">
+      <div class="panel-header">
+        <h3 id="invWorldName">Inventory</h3>
+        <button id="closeInvBtn" class="panel-close" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+      <div id="invContent"></div>
+    </div>
+  </div>
+</div>
+<div id="catInfoModal">
+  <div class="sheet">
+    <div class="sheet-scroll">
+      <div class="panel-header">
+        <h3 id="catInfoTitle">Section</h3>
+        <button id="closeCatInfoBtn" class="panel-close" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+      <div class="cat-info-block" id="catInfoItemsBlock" style="display:none;">
+        <div class="cat-info-label">Current Items</div>
+        <div class="cat-info-text" id="catInfoItems"></div>
+      </div>
+      <div class="cat-info-block">
+        <div class="cat-info-label">What it is</div>
+        <div class="cat-info-text" id="catInfoWhat"></div>
+      </div>
+      <div class="cat-info-block">
+        <div class="cat-info-label">How it updates</div>
+        <div class="cat-info-text" id="catInfoHow"></div>
+      </div>
+      <div class="cat-info-block">
+        <div class="cat-info-label">What won't change it</div>
+        <div class="cat-info-text" id="catInfoWont"></div>
+      </div>
+      <div class="cat-info-block" id="catInfoUseBlock">
+        <div class="cat-info-label">What you can do here</div>
+        <div class="cat-info-text" id="catInfoUse"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="relInfoModal">
+  <div class="sheet">
+    <div class="sheet-scroll">
+      <div class="panel-header">
+        <h3 id="relInfoName">Character</h3>
+        <button id="closeRelInfoBtn" class="panel-close" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+      <div class="cat-info-block">
+        <div class="cat-info-label">History</div>
+        <div class="cat-info-text" id="relInfoContent"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="itemActionSheet">
+  <div class="item-action-backdrop"></div>
+  <div class="item-action-panel">
+    <div class="item-action-handle"></div>
+    <div class="item-action-header">
+      <div class="item-action-name" id="itemActionName">Item</div>
+      <div class="item-action-status" id="itemActionStatus">Status: None</div>
+    </div>
+    <button type="button" class="item-action-btn" id="itemActionPhotoBtn">Change Photo</button>
+    <div class="item-action-row">
+      <button type="button" class="item-action-btn item-action-btn-half" id="itemActionEquipBtn">Equip</button>
+      <button type="button" class="item-action-btn item-action-btn-half item-action-danger" id="itemActionDeleteBtn">Delete</button>
+    </div>
+  </div>
+</div>
+<input type="file" id="equipHubTopFile" accept="image/*" style="display:none;">
+
+<input type="file" id="equipHubBottomFile" accept="image/*" style="display:none;">
+
+<input type="file" id="invItemPhotoInput" accept="image/*" style="display:none;">
+
+
+<!-- ================================================================
+     SECTION 6 — INSIDE THE CHATROOM: JS
+     script_chatroom.js is the chat screen itself — rendering messages,
+     the composer/send flow, media attach, and the wiring that connects
+     a sent message to the Letter of Records pipeline below.
+
+     script_letter_of_records.js is the Letter of Records main file: the
+     panel data model, schema, merge engine (findExistingKey,
+     mergePanelUpdate, genId, panelToText, renderPanelHtml, etc.), and
+     pre-send claim checks for Identity, Milestones, Relationships, and
+     Status. script_chatroom.js's sendMessage() gates on this file.
+
+     The remaining four files are guard modules for their own Letter of
+     Records sections, and all four call into the shared machinery
+     defined in script_letter_of_records.js:
+       - script_finance.js          → Finances
+       - script_inventory_equip.js  → Inventory + Equip Box
+       - script_tase.js              → Timeline + Scheduled Events
+       - script_saal.js             → Skills & Abilities + Learning
+
+     All six share one global scope (no modules, no exports) and must
+     load AFTER Section 3's inline script in index_yourworld.html, which
+     defines the globals they depend on (state, els, askAI, storage
+     helpers, showOverlayModal/hideOverlayModal, pushNavState, etc.).
+     script_chatroom.js loads first since it wires up els.sendBtn before
+     any other file runs; script_letter_of_records.js must load before
+     the four guard files, since they call its functions. Load order
+     among those four guard files themselves does not matter — every
+     cross-file call between any of these six files happens at
+     click/response time, well after all six have finished loading,
+     never at load time itself. -->
+<script src="script_chatroom.js" defer></script>
+<script src="script_letter_of_records.js" defer></script>
+<script src="script_finance.js" defer></script>
+<script src="script_inventory_equip.js" defer></script>
+<script src="script_tase.js" defer></script>
+<script src="script_saal.js" defer></script>
