@@ -1,0 +1,1638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Worlds</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=Playfair+Display:ital,wght@0,600;0,700;1,500;1,600&family=EB+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+<style>
+
+  /* ============================================================
+     SECTION 2 — OUTSIDE THE CHATROOM: CSS
+     ============================================================ */
+  :root{
+    --bg:#0D0F13; --bg-elev:#161922; --panel:rgba(10,12,16,0.62); --panel-solid:#181B22;
+    --text:#F2F1ED; --text-dim:#9A9FAC; --line:rgba(255,255,255,0.09);
+    --amber:#FFFFFF; --rose:#E0637A;
+    --diary-wax:#7D3128;
+    --paper-a:#F2EAD8; --paper-b:#E5D9BE;
+    --letter-ink:#2E2024; --letter-ink-soft:#6E4A50; --letter-line:rgba(59,42,46,0.16);
+    --burgundy:#5B2430; --burgundy-soft:rgba(91,36,48,0.08); --burgundy-line:rgba(139,85,96,0.42);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html{-webkit-text-size-adjust:100%; text-size-adjust:100%;}
+  html,body{margin:0;height:100%; overflow:hidden; overscroll-behavior:none; touch-action:manipulation; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;}
+  img,video{-webkit-touch-callout:none; -webkit-user-drag:none; user-drag:none;}
+  input, textarea{-webkit-user-select:text; user-select:text; -webkit-touch-callout:none;}
+  body{background:var(--bg); font-family:'Inter',sans-serif; color:var(--text); display:flex; justify-content:center; height:100%; height:100dvh;}
+  #app{width:100%; max-width:480px; height:100%; display:flex; flex-direction:column; position:relative; background:var(--bg); overflow:hidden;}
+
+  /* ---------- library topbar ---------- */
+  #homeScreen{flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; display:none;}
+  #topbar{padding:26px 16px 18px; position:relative; background:linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 100%);}
+  #topbar::after{content:''; position:absolute; left:16px; right:16px; bottom:0; height:1px; background:linear-gradient(90deg, transparent, var(--line) 15%, var(--line) 85%, transparent);}
+  .topbar-head{display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin:0 0 18px; padding:0 6px; position:relative;}
+  #topbarTitle{font-family:'Fraunces',serif; font-weight:700; font-size:24px; letter-spacing:.015em; color:var(--text); display:flex; align-items:center; gap:9px;}
+  #topbarTitle .title-icon{flex-shrink:0; color:var(--amber);}
+  #worldCount{flex-shrink:0; font-size:11.5px; font-weight:700; color:var(--text-dim); letter-spacing:.03em; background:rgba(255,255,255,0.045); border:1px solid var(--line); padding:6px 12px; border-radius:999px;}
+  #topbar .row1{display:flex; align-items:center; gap:10px; position:relative;}
+  #searchBox{flex:1; display:flex; align-items:center; gap:9px; background:var(--bg-elev); border:1px solid var(--line); border-radius:999px; padding:12px 16px; box-shadow:inset 0 1px 0 rgba(255,255,255,0.04), 0 4px 12px rgba(0,0,0,0.2); transition:border-color .18s ease, box-shadow .18s ease;}
+  #searchBox:focus-within{border-color:rgba(255,255,255,0.32); box-shadow:inset 0 1px 0 rgba(255,255,255,0.04), 0 0 0 3px rgba(255,255,255,0.05);}
+  #searchBox svg{flex-shrink:0; opacity:.5; transition:opacity .18s ease;}
+  #searchBox:focus-within svg{opacity:.85;}
+  #searchInput{border:none; background:none; outline:none; color:var(--text); font-family:inherit; font-size:14px; width:100%;}
+  #searchInput::placeholder{color:var(--text-dim);}
+  #library{padding:32px 15px 90px;}
+  .screen-hidden{display:none !important;}
+  #libEmpty{padding:70px 20px; text-align:center; color:var(--text-dim);}
+  #libEmpty .display{font-family:'Fraunces',serif; font-size:18px; color:var(--text); margin-bottom:6px; font-weight:600;}
+  #libGrid{display:grid; grid-template-columns:1fr 1fr; row-gap:22px; column-gap:14px; align-items:start;}
+  .world-card{background:#12141a; border-radius:16px; overflow:hidden; cursor:pointer; border:1px solid var(--line); display:flex; flex-direction:column; box-shadow:0 4px 14px rgba(0,0,0,0.25); transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease;}
+  .world-card:active{transform:scale(0.965); box-shadow:0 2px 8px rgba(0,0,0,0.3);}
+  .cover-wrap{position:relative; height:200px; flex-shrink:0; overflow:hidden; background:linear-gradient(160deg,#22262f,#14161b);}
+  .cover-wrap img{width:100%;height:100%;object-fit:cover; object-position:center; display:block; transition:transform .35s ease; animation:coverIn .3s ease both;}
+  @keyframes coverIn{from{opacity:0;} to{opacity:1;}}
+  .screen-in{animation:screenFadeIn .32s cubic-bezier(.22,.61,.36,1) both;}
+  @keyframes screenFadeIn{from{opacity:0;} to{opacity:1;}}
+  .world-card:active .cover-wrap img{transform:scale(1.04);}
+  .cover-wrap.placeholder{display:flex;align-items:center;justify-content:center; font-family:'Fraunces',serif; font-size:34px; color:var(--text-dim); background:radial-gradient(circle at 30% 20%, #262b35, #14161b 75%);}
+  .cover-fade{position:absolute; left:0; right:-1px; bottom:-1px; height:85%; background:linear-gradient(to top, #12141a 0%, rgba(18,20,26,0.94) 18%, rgba(18,20,26,0.6) 45%, rgba(18,20,26,0.15) 75%, transparent 100%); pointer-events:none;}
+  .msg-count{position:absolute; left:9px; bottom:9px; display:flex; align-items:center; gap:4px; font-size:10.5px; font-weight:700; color:#F2F1ED; background:rgba(0,0,0,0.4); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); padding:4px 8px 4px 7px; border-radius:20px; letter-spacing:.01em;}
+  .msg-count svg{opacity:.9;}
+  .card-info{padding:11px 12px 14px; flex:1; display:flex; flex-direction:column; justify-content:center; min-height:52px; background:linear-gradient(to bottom, #12141a 0%, #0a0b0e 100%);}
+  .card-name{font-family:'Fraunces',serif; font-weight:600; font-size:14.5px; color:var(--text); line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
+
+  /* ---------- bottom nav ---------- */
+  #bottomNav{position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:480px; display:flex; align-items:center; justify-content:space-around; background:rgba(22,25,32,0.94); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-top:1px solid rgba(255,255,255,0.09); border-radius:22px 22px 0 0; padding:10px 12px calc(10px + env(safe-area-inset-bottom)); z-index:15; box-shadow:0 -14px 30px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04);}
+  #bottomNav::before{content:''; position:absolute; left:0; right:0; bottom:100%; height:40px; background:linear-gradient(to top, rgba(13,15,19,0.55), transparent); pointer-events:none;}
+  .nav-item{position:relative; background:none; border:none; display:flex; flex-direction:column; align-items:center; gap:5px; color:var(--text-dim); font-size:10px; font-weight:600; letter-spacing:.01em; cursor:pointer; padding:8px 12px; flex:1; border-radius:16px; transition:color .18s ease, background .18s ease;}
+  .nav-item svg{opacity:.65; transition:opacity .18s ease, transform .15s ease;}
+  .nav-item:active svg{transform:scale(0.88);}
+  .nav-item.active{color:var(--text); font-weight:700;}
+  .nav-item.active:not(.plus){background:rgba(255,255,255,0.08); box-shadow:inset 0 1px 0 rgba(255,255,255,0.06);}
+  .nav-item.active svg{opacity:1;}
+  .nav-item.plus{margin-top:-32px; padding-top:0;}
+  .nav-item.plus .plus-circle{position:relative; width:56px;height:56px;border-radius:50%; background:radial-gradient(circle at 32% 28%, #FFFFFF 0%, #EDEAE0 55%, #DCD8CA 100%); display:flex; align-items:center; justify-content:center; margin-bottom:4px; box-shadow:0 10px 24px rgba(255,255,255,0.28), 0 4px 10px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.9), inset 0 -3px 6px rgba(0,0,0,0.08); border:4px solid rgba(22,25,32,0.94); transition:transform .12s ease, box-shadow .12s ease;}
+  .nav-item.plus .plus-circle::after{content:''; position:absolute; inset:-9px; border-radius:50%; border:1px solid rgba(255,255,255,0.14); pointer-events:none;}
+  .nav-item.plus:active .plus-circle{transform:scale(0.91); box-shadow:0 4px 14px rgba(255,255,255,0.2), 0 2px 6px rgba(0,0,0,0.35), inset 0 1px 1px rgba(255,255,255,0.9);}
+  .nav-item.plus.active{color:var(--text-dim);}
+  #messagesScreen, #settingsScreen, #usageScreen{padding-bottom:160px !important;}
+  #library{padding-bottom:160px !important;}
+
+  /* ---------- editor ---------- */
+  #editor{flex:1; padding:30px 20px 100px; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; display:none;}
+  #editor.opening{animation:editorIn .4s ease-out both;}
+  @keyframes editorIn{from{transform:translateY(60px);} to{transform:translateY(0);}}
+  #editor .backRow{display:flex; align-items:center; justify-content:space-between; gap:10px; margin:0 -20px 30px; padding:0 30px;}
+  #editor .backRow button{background:none; border:1px solid var(--line); color:var(--text); font-size:12px; padding:7px 12px; border-radius:20px; cursor:pointer;}
+  #editor .backRow h2{margin:0; font-family:'Fraunces',serif; font-size:21px; font-weight:600;}
+  #editorCloseBtn{width:34px; height:34px; padding:0 !important; display:flex; align-items:center; justify-content:center; font-size:22px !important; line-height:1; border-radius:50% !important; border:none !important;}
+  .panel{background:var(--panel-solid); border:1px solid var(--line); border-radius:16px; padding:18px 16px 20px;}
+  .field{margin-bottom:30px;}
+  .field label{display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-dim); margin-bottom:10px;}
+  .field input[type=text], .field textarea{width:100%; border:1px solid var(--line); border-radius:10px; background:var(--bg-elev); font-family:'Inter',sans-serif; font-size:14.5px; color:var(--text); padding:14px 12px; resize:vertical;}
+  .field textarea{min-height:130px; line-height:1.5; overflow-y:hidden;}
+  .field input:focus, .field textarea:focus{outline:none; border-color:var(--amber);}
+  .field textarea.locked{background:rgba(255,255,255,0.02); color:var(--text-dim); resize:none; cursor:not-allowed;}
+  .field textarea.locked:focus{border-color:var(--line);}
+  #editorLockNote{display:flex; gap:8px; font-size:12.5px; line-height:1.5; color:var(--text-dim); background:rgba(255,255,255,0.04); border:1px solid var(--line); border-radius:10px; padding:11px 12px; margin-bottom:16px;}
+  #uploadsRow{display:flex; align-items:flex-start; gap:14px; margin-bottom:30px;}
+  #avatarRow, #bgRow{flex:1; display:flex; flex-direction:column; align-items:center; gap:10px;}
+  #avatarPreview{width:100%;aspect-ratio:3/4;height:auto;border-radius:10px; object-fit:cover; background:var(--bg-elev); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; color:var(--text-dim); font-size:26px; font-family:'Fraunces',serif; flex-shrink:0; overflow:hidden; cursor:pointer;}
+  #bgPreview{width:100%;aspect-ratio:3/4;height:auto;border-radius:10px; background:var(--bg-elev) center/cover no-repeat; border:1px solid var(--line); flex-shrink:0; cursor:pointer;}
+  .upload-caption{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-dim);}
+  #bgClearBtn{width:100%; background:none; border:1px solid rgba(224,99,122,0.4); color:var(--rose); border-radius:20px; padding:9px 10px; font-size:12px; cursor:pointer;}
+  #saveCardBtn{width:100%; margin-top:6px; background:var(--amber); color:#1A1204; border:none; border-radius:12px; padding:14px; font-family:'Inter',sans-serif; font-weight:700; font-size:15px; cursor:pointer;}
+  #deleteCardBtn{width:100%; margin-top:10px; background:none; color:var(--rose); border:1px solid rgba(224,99,122,0.4); border-radius:12px; padding:12px; font-size:13px; cursor:pointer;}
+
+  /* ---------- library card long-press menu ---------- */
+  #cardCtxMenu{
+    position:fixed; z-index:30;
+    background: rgba(24,27,34,0.86);
+    -webkit-backdrop-filter: blur(22px) saturate(160%);
+    backdrop-filter: blur(22px) saturate(160%);
+    border:1px solid rgba(255,255,255,0.1); border-radius:18px; padding:7px;
+    box-shadow:0 24px 60px rgba(0,0,0,0.55), 0 4px 14px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05);
+    display:none; flex-direction:column; min-width:196px; opacity:0;
+    transform:scale(0.94) translateY(4px); transform-origin:top left;
+    transition:opacity .22s cubic-bezier(.2,.8,.2,1), transform .22s cubic-bezier(.2,.8,.2,1);
+  }
+  #cardCtxMenu.open{opacity:1; transform:scale(1) translateY(0);}
+  #cardCtxMenu button{
+    background:none; border:none; color:var(--text); text-align:left;
+    padding:9px 10px; font-family:'Inter',sans-serif; font-weight:600; font-size:14.5px;
+    letter-spacing:.01em; cursor:pointer; border-radius:11px;
+    display:flex; align-items:center; gap:11px;
+    transition:background .15s ease, transform .1s ease;
+  }
+  #cardCtxMenu button:active{background:rgba(255,255,255,0.09); transform:scale(0.98);}
+  #cardCtxMenu .ctx-icon{
+    width:30px; height:30px; border-radius:9px; flex:none;
+    display:flex; align-items:center; justify-content:center;
+    background:rgba(255,255,255,0.06); color:var(--text-dim);
+  }
+  #cardCtxMenu button#cardCtxDownload .ctx-icon{background:rgba(122,162,255,0.14); color:#8FB0FF;}
+  #cardCtxMenu button#cardCtxImport .ctx-icon{background:rgba(154,138,255,0.14); color:#B4A6FF;}
+  #cardCtxMenu button.danger{color:var(--rose);}
+  #cardCtxMenu button.danger .ctx-icon{background:rgba(224,99,122,0.14); color:var(--rose);}
+  #cardCtxMenu button + button{margin-top:2px;}
+  #cardCtxMenu .ctx-divider{height:1px; margin:5px 8px; background:rgba(255,255,255,0.08);}
+  #cardCtxOverlay{position:fixed; inset:0; z-index:29; display:none; background:rgba(0,0,0,0); transition:background .28s ease; pointer-events:none;}
+  #cardCtxOverlay.open{background:rgba(0,0,0,0.4); -webkit-backdrop-filter:blur(1px); backdrop-filter:blur(1px); pointer-events:auto;}
+
+  /* ---------- messages ---------- */
+  #messagesScreen{flex:1; padding:20px 14px 90px; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; display:none;}
+  #messagesScreen h2{font-family:'Fraunces',serif; font-size:23px; margin:2px 0 30px; padding:0 10px; font-weight:600; display:flex; align-items:center; gap:10px;}
+  #msgEmpty{padding:70px 20px; text-align:center; color:var(--text-dim);}
+  #msgList{display:flex; flex-direction:column; gap:10px;}
+  .conv-row{display:flex; align-items:center; gap:14px; padding:14px 10px; border-radius:12px; cursor:pointer;}
+  .conv-row:active{background:var(--bg-elev);}
+  .conv-avatar{width:58px;height:58px;border-radius:12px; object-fit:cover; background:var(--bg-elev); flex-shrink:0;}
+  .conv-avatar.placeholder{display:flex;align-items:center;justify-content:center; font-family:'Fraunces',serif; color:var(--text-dim); font-size:22px;}
+  .conv-info{min-width:0; flex:1;}
+  .conv-name{font-weight:700; font-size:16.5px; margin-bottom:3px;}
+  .conv-preview{font-size:13.5px; color:var(--text-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+
+  /* ---------- settings ---------- */
+  #settingsScreen{flex:1; padding:20px 14px 160px; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; display:none;}
+  #settingsScreen h2{font-family:'Fraunces',serif; font-size:23px; margin:2px 0 30px; padding:0 10px; font-weight:600; display:flex; align-items:center; gap:10px;}
+  .settings-card{background:linear-gradient(165deg, #1B1E27 0%, var(--panel-solid) 100%); border:1px solid var(--line); border-radius:16px; padding:18px; margin-bottom:30px; box-shadow:0 6px 20px rgba(0,0,0,0.18);}
+  .settings-card:last-of-type{margin-bottom:50px;}
+  .settings-card .card-head{display:flex; align-items:center; gap:10px; margin-bottom:14px;}
+  .settings-card .icon-badge{width:30px; height:30px; border-radius:9px; background:rgba(255,255,255,0.06); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--text-dim);}
+  .settings-card.danger .icon-badge{background:rgba(224,99,122,0.1); border-color:rgba(224,99,122,0.3); color:var(--rose);}
+  .settings-card .label{font-size:12.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-dim); font-weight:700; margin:0;}
+  .settings-card .value{font-size:13.5px; font-weight:400; line-height:1.6; color:var(--text-dim);}
+  .settings-field{width:100%; border:1px solid var(--line); border-radius:12px; background:var(--bg-elev); font-family:inherit; font-size:13.5px; color:var(--text); padding:13px 14px; transition:border-color .15s ease, box-shadow .15s ease;}
+  .settings-field:focus{outline:none; border-color:rgba(255,255,255,0.4); box-shadow:0 0 0 3px rgba(255,255,255,0.06);}
+  .settings-field::placeholder{color:var(--text-dim);}
+  select.settings-field{-webkit-appearance:none; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239A9FAC' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; padding-right:38px; cursor:pointer;}
+  .settings-btn{width:100%; background:var(--bg-elev); border:1px solid var(--line); color:var(--text); border-radius:12px; padding:13px; font-size:13.5px; font-weight:600; cursor:pointer; margin-top:10px; transition:transform .08s ease, background .15s ease;}
+  .settings-btn:active{transform:scale(0.98);}
+  .settings-btn.primary{background:var(--amber); color:#1A1204; border:none; box-shadow:0 4px 14px rgba(255,255,255,0.12);}
+  .settings-btn.danger{color:var(--rose); border-color:rgba(224,99,122,0.4); background:rgba(224,99,122,0.06);}
+  .settings-status{font-size:12px; color:var(--text-dim); margin-top:10px; line-height:1.5;}
+
+  /* ---------- usage screen ---------- */
+  #usageScreen{flex:1; padding:20px 14px 160px; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; display:none;}
+  #usageScreen h2{font-family:'Fraunces',serif; font-size:23px; margin:2px 0 30px; padding:0 10px; font-weight:600; display:flex; align-items:center; gap:10px;}
+  .usage-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; font-size:13.5px; color:var(--text-dim); border-bottom:1px solid var(--line);}
+  .usage-val{color:var(--text); font-weight:600; text-align:right;}
+  .usage-bar-track{width:100%; height:7px; border-radius:4px; background:var(--bg-elev); margin-top:12px; overflow:hidden;}
+  .usage-bar-fill{height:100%; border-radius:4px; background:linear-gradient(90deg, #E4E1D8, var(--amber)); transition:width .4s ease;}
+  .usage-warn{font-size:13px; color:var(--rose); background:rgba(224,99,122,0.08); border:1px solid rgba(224,99,122,0.3); border-radius:12px; padding:12px 14px; margin-bottom:30px; line-height:1.5;}
+  .usage-model-grid{display:flex; flex-direction:column; gap:30px; margin-bottom:30px;}
+  .usage-model-card{background:linear-gradient(165deg, #1B1E27 0%, var(--panel-solid) 100%); border:1px solid var(--line); border-radius:18px; padding:22px; box-shadow:0 6px 20px rgba(0,0,0,0.18);}
+  .usage-model-card.no-free{opacity:.75;}
+  .um-name{font-family:'Fraunces',serif; font-size:19px; font-weight:700; color:var(--text); margin-bottom:14px;}
+  .um-stats{display:flex; align-items:baseline; gap:8px; margin-bottom:12px;}
+  .um-used{font-size:32px; font-weight:800; color:var(--text); line-height:1;}
+  .um-of{font-size:14px; color:var(--text-dim);}
+  .um-remaining{font-size:13px; color:var(--text-dim); margin-bottom:14px;}
+  .um-remaining b{color:var(--amber); font-weight:700;}
+  .usage-model-card .usage-bar-track{margin-top:0; height:9px;}
+  .um-tokens{font-size:11.5px; color:var(--text-dim); margin-top:12px; padding-top:12px; border-top:1px solid var(--line);}
+  .um-paid-note{font-size:12px; color:var(--text-dim); font-style:italic; margin-top:2px;}
+
+  /* ---------- lock screen ---------- */
+  #lockScreen{position:fixed; inset:0; z-index:1000; background:var(--bg); display:flex; align-items:center; justify-content:center; padding:24px;}
+  #lockScreen.hidden{display:none;}
+  .lock-card{width:100%; max-width:320px; text-align:center;}
+  .lock-title{font-family:'Fraunces',serif; font-weight:600; font-size:22px; color:var(--text); margin-bottom:6px;}
+  .lock-sub{font-size:13px; color:var(--text-dim); margin-bottom:28px;}
+  .lock-dots{display:flex; justify-content:center; gap:14px; margin-bottom:26px;}
+  .lock-dot{width:14px; height:14px; border-radius:50%; border:1.5px solid var(--line); background:transparent; transition:background .15s ease, border-color .15s ease, transform .15s ease;}
+  .lock-dot.filled{background:var(--text); border-color:var(--text); transform:scale(1.1);}
+  .lock-dots.shake{animation:lockShake .38s ease;}
+  @keyframes lockShake{10%,90%{transform:translateX(-2px);}20%,80%{transform:translateX(4px);}30%,50%,70%{transform:translateX(-8px);}40%,60%{transform:translateX(8px);}}
+  .lock-keypad{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; max-width:260px; margin:0 auto;}
+  .lock-key{aspect-ratio:1; border-radius:50%; border:1px solid var(--line); background:var(--bg-elev); color:var(--text); font-family:'Inter',sans-serif; font-size:19px; font-weight:600; display:flex; align-items:center; justify-content:center; -webkit-user-select:none; user-select:none;}
+  .lock-key:active{background:#20232c;}
+  .lock-key.ghost{background:none; border:none;}
+  .lock-error{min-height:18px; font-size:12.5px; color:var(--rose); margin-top:16px;}
+
+</style>
+</head>
+<body>
+
+<!-- ================================================================
+     SECTION 1 — OUTSIDE THE CHATROOM: HTML
+     (lock screen, library/home, messages list, settings, usage,
+     world editor, bottom nav, add-world drawer, library card menu)
+     ================================================================ -->
+<div id="lockScreen">
+  <div class="lock-card">
+    <div class="lock-title" id="lockTitle">Worlds</div>
+    <div class="lock-sub" id="lockSub">Enter PIN to continue</div>
+    <div class="lock-dots" id="lockDots">
+      <div class="lock-dot"></div><div class="lock-dot"></div><div class="lock-dot"></div>
+      <div class="lock-dot"></div><div class="lock-dot"></div><div class="lock-dot"></div>
+    </div>
+    <div class="lock-keypad" id="lockKeypad">
+      <button class="lock-key" data-k="1">1</button><button class="lock-key" data-k="2">2</button><button class="lock-key" data-k="3">3</button>
+      <button class="lock-key" data-k="4">4</button><button class="lock-key" data-k="5">5</button><button class="lock-key" data-k="6">6</button>
+      <button class="lock-key" data-k="7">7</button><button class="lock-key" data-k="8">8</button><button class="lock-key" data-k="9">9</button>
+      <div class="lock-key ghost"></div><button class="lock-key" data-k="0">0</button><button class="lock-key ghost" data-k="back">⌫</button>
+    </div>
+    <div class="lock-error" id="lockError"></div>
+  </div>
+</div>
+<div id="app">
+
+  <div id="homeScreen">
+    <div id="topbar">
+      <div class="topbar-head">
+        <div id="topbarTitle"><svg class="title-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9l4.2-1.4L12 3z"/><path d="M19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9L19 14z"/><path d="M5 14l.7 1.8L7.5 16.5l-1.8.7L5 19l-.7-1.8L2.5 16.5l1.8-.7L5 14z"/></svg><span>FANTASY</span></div>
+        <div id="worldCount"></div>
+      </div>
+      <div class="row1">
+        <div id="searchBox">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="searchInput" placeholder="Search your worlds">
+        </div>
+      </div>
+    </div>
+
+    <div id="library">
+      <div id="libEmpty" class="screen-hidden">
+        <div class="display">No worlds yet</div>
+        <div>Tap the + below to build your first one.</div>
+      </div>
+      <div id="libGrid"></div>
+    </div>
+  </div>
+
+  <div id="cardCtxOverlay"></div>
+  <div id="cardCtxMenu">
+    <button id="cardCtxEdit"><span class="ctx-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span> Edit</button>
+    <button id="cardCtxDownload"><span class="ctx-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg></span> Download</button>
+    <button id="cardCtxImport"><span class="ctx-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg></span> Import</button>
+    <div class="ctx-divider"></div>
+    <button id="cardCtxDelete" class="danger"><span class="ctx-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></span> Delete</button>
+  </div>
+  <input type="file" id="cardCtxImportFileInput" accept="application/json" style="display:none;">
+
+  <div id="messagesScreen">
+    <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Messages</h2>
+    <div id="msgEmpty" class="screen-hidden"><div>No conversations yet — start a world to begin one.</div></div>
+    <div id="msgList"></div>
+  </div>
+
+  <div id="settingsScreen">
+    <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</h2>
+    <div class="settings-card">
+      <div class="card-head">
+        <div class="icon-badge"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg></div>
+        <div class="label">Gemini API key</div>
+      </div>
+      <input type="text" id="geminiKeyInput" class="settings-field" placeholder="Paste your Gemini API key" style="margin-bottom:12px;">
+      <button class="settings-btn primary" id="saveGeminiKeyBtn">Save key</button>
+      <div class="settings-status" id="geminiKeyStatus"></div>
+    </div>
+    <div class="settings-card">
+      <div class="card-head">
+        <div class="icon-badge"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg></div>
+        <div class="label">Model</div>
+      </div>
+      <select id="geminiModelSelect" class="settings-field">
+        <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
+        <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
+        <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
+        <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+      </select>
+    </div>
+    <div class="settings-card">
+      <div class="card-head">
+        <div class="icon-badge"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg></div>
+        <div class="label">Background model</div>
+      </div>
+      <div class="value" style="margin-bottom:10px;">Used for memory summaries and the character sheet (letters of record). Flash Lite handles this better, but you can drop to 3.1 if you're low on tokens.</div>
+      <select id="geminiBgModelSelect" class="settings-field">
+        <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
+        <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+      </select>
+    </div>
+    <div class="settings-card">
+      <div class="card-head">
+        <div class="icon-badge"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+        <div class="label">Change PIN</div>
+      </div>
+      <div class="value" style="margin-bottom:10px;">Only the PIN's hash is stored — never the digits themselves.</div>
+      <input type="password" id="currentPinInput" class="settings-field" placeholder="Current PIN" inputmode="numeric" maxlength="6" style="margin-bottom:8px;">
+      <input type="password" id="newPinInput" class="settings-field" placeholder="New PIN (6 digits)" inputmode="numeric" maxlength="6" style="margin-bottom:8px;">
+      <input type="password" id="confirmPinInput" class="settings-field" placeholder="Confirm new PIN" inputmode="numeric" maxlength="6" style="margin-bottom:12px;">
+      <button class="settings-btn primary" id="savePinBtn">Update PIN</button>
+      <div class="settings-status" id="pinChangeStatus"></div>
+    </div>
+    <div class="settings-card">
+      <div class="card-head">
+        <div class="icon-badge"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg></div>
+        <div class="label">About</div>
+      </div>
+      <div class="value">Worlds stores everything locally on this device (nothing leaves your browser except story requests to Gemini) and generates stories via Google's free Gemini API. Open any story and tap the ⚙️ icon to view memory or back up that story. Clearing your browser data will erase your worlds — use the export option to back them up.</div>
+    </div>
+    <div class="settings-card danger">
+      <div class="card-head">
+        <div class="icon-badge"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg></div>
+        <div class="label">Danger zone</div>
+      </div>
+      <button class="settings-btn danger" id="eraseAllBtn">Erase all worlds &amp; conversations</button>
+    </div>
+  </div>
+
+  <div id="usageScreen">
+    <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15v3M12 11v7M17 7v11"/></svg>Usage</h2>
+    <div id="usageNoKeyWarn" class="usage-warn screen-hidden">No Gemini key saved yet, so nothing has been used. Add one in Settings.</div>
+    <div class="usage-model-grid" id="usageModelGrid"></div>
+    <div class="settings-card">
+      <div class="card-head">
+        <div class="icon-badge"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg></div>
+        <div class="label">Storage</div>
+      </div>
+      <div class="usage-row"><span>Used on this device</span><span id="usageStorageUsed" class="usage-val">—</span></div>
+      <div class="usage-row" style="border-bottom:none;"><span>Available</span><span id="usageStorageQuota" class="usage-val">—</span></div>
+      <div class="usage-bar-track"><div class="usage-bar-fill" id="usageStorageBar" style="width:0%;"></div></div>
+    </div>
+    <button class="settings-btn" id="resetUsageStatsBtn" style="margin-top:30px; margin-bottom:50px;">Reset usage counters</button>
+  </div>
+
+  <div id="bottomNav">
+    <button class="nav-item" data-tab="library">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+      Home
+    </button>
+    <button class="nav-item" data-tab="messages">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Messages
+    </button>
+    <button class="nav-item plus" data-tab="new">
+      <div class="plus-circle"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1A1204" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></div>
+    </button>
+    <button class="nav-item" data-tab="usage">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15v3M12 11v7M17 7v11"/></svg>
+      Usage
+    </button>
+    <button class="nav-item" data-tab="settings">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Settings
+    </button>
+  </div>
+
+  <div id="addDrawerOverlay"></div>
+  <div id="addDrawer">
+    <div class="drawer-eyebrow">New entry</div>
+    <div class="drawer-title">Add a World</div>
+    <div class="drawer-rule"></div>
+    <div class="drawer-row">
+      <button id="addDrawerImportBtn" class="secondary"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg><span>Import</span></button>
+      <button id="addDrawerNewBtn" class="primary"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg><span>Create</span></button>
+    </div>
+  </div>
+  <input type="file" id="addDrawerImportFileInput" accept="application/json" style="display:none">
+
+  <div id="editor">
+    <div class="backRow">
+      <h2 id="editorTitle">New world</h2>
+      <button id="editorCloseBtn" aria-label="Close">&times;</button>
+    </div>
+    <div class="panel">
+      <div id="uploadsRow">
+        <div id="avatarRow">
+          <div id="avatarPreview">葉</div>
+          <div class="upload-caption">Cover image</div>
+          <input type="file" id="fileInput" accept="image/*">
+        </div>
+        <div id="bgRow">
+          <div id="bgPreview"></div>
+          <div class="upload-caption">Background image</div>
+          <button id="bgClearBtn" type="button" class="screen-hidden">Remove</button>
+          <input type="file" id="bgFileInput" accept="image/*">
+        </div>
+      </div>
+      <div class="field"><label>World name</label><input type="text" id="fName" placeholder="e.g. Leaf Academy, Marvel Universe"></div>
+      <div id="editorLockNote" class="screen-hidden">✏️ Editing the setting, characters, or opening scene mid-story updates what the AI treats as true going forward — it won't retroactively rewrite what's already happened, but every new reply from here on will build on the updated version.</div>
+      <div class="field">
+        <label>Setting &amp; characters</label>
+        <textarea id="fLore" placeholder="Describe the world: where/when it is, the tone, the key characters and how they act and speak, and who the player is in it. Tip: a line like &quot;Day 12 — Chūnin Exam&quot; adds that to Scheduled Events automatically."></textarea>
+      </div>
+      <div class="field"><label>Opening scene</label><textarea id="fOpening" placeholder="How the story begins — set the scene in 2nd person and end on a moment the player can react to."></textarea></div>
+      <button id="saveCardBtn">Save world</button>
+      <button id="deleteCardBtn" class="screen-hidden">Delete this world</button>
+    </div>
+  </div>
+
+  
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+// ================================================================
+// SECTION 3 — OUTSIDE THE CHATROOM: JS
+// (storage, screen navigation, library, editor, settings, usage,
+// lock screen, and the shared AI-calling layer that the chatroom
+// scripts below depend on)
+// ================================================================
+/* ================================================================================
+   Inline app-shell script
+
+   OUTSIDE THE CHATROOM: the app shell and shared infra — storage, screen
+   navigation, the library, the world editor, settings, usage stats, the
+   lock screen, and the core AI-calling layer (askAI, usage tracking, the
+   async world-op queue).
+
+   This inline script defines the shared globals (storage helpers, els,
+   askAI, etc.) that the chatroom scripts depend on: script_chatroom.js
+   (the chat screen itself), script_letter_of_records.js (the Letter of
+   Records main file — data model, merge engine, panel rendering, claim
+   checks), and its four section guard files (script_finance.js,
+   script_inventory_equip.js, script_tase.js, script_saal.js) — all loaded
+   in index_myworld.html's Section 6, after this file's HTML/CSS/JS. This
+   script must load first, which it does here, inline. All of them share
+   one global scope; none is a module.
+   ================================================================================ */
+
+/* ################################################################################
+   SECTION 1 — OUTSIDE THE CHATROOM (app shell + shared infra)
+   Everything that isn't the story/roleplay itself, plus the shared plumbing
+   that connects the chatroom to the outside world: IndexedDB storage, screen
+   navigation, the library (world list), the world editor, settings, usage
+   stats, the lock screen / PIN flow, image resizing, and the core AI-calling
+   layer (askAI, askAIWithRetry, usage tracking, JSON extraction, the async
+   world-op queue). Section 2 and Section 3 both call into this section, so
+   this section must load FIRST in index.html.
+################################################################################ */
+
+// ================= storage (IndexedDB — fully local, on-device, no account needed) =================
+const INDEX_KEY = 'wc_index_v2';
+const IDB_NAME = 'worlds_catalog_db';
+const IDB_STORE = 'kv';
+let _idbPromise = null;
+
+// Without this, IndexedDB here is only "best-effort" storage — Android Chrome (and other
+// browsers) are allowed to silently evict it under disk pressure, with no warning to the
+// player, no matter how careful the code above is about never overwriting Identity/Finances/
+// Inventory itself. Asking for persistent storage tells the browser this origin's data should
+// be treated the same as an installed app's and left alone unless the player clears it
+// themselves. Best-effort (the browser can still say no, mainly on iOS Safari), but there's no
+// downside to asking, and it's the one piece of "stored forever" that isn't under this app's
+// own control at all.
+if(navigator.storage && navigator.storage.persist){
+  navigator.storage.persist().catch(()=>{});
+}
+
+function openDB(){
+  if(_idbPromise) return _idbPromise;
+  _idbPromise = new Promise((resolve, reject)=>{
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = ()=>{ req.result.createObjectStore(IDB_STORE); };
+    req.onsuccess = ()=> resolve(req.result);
+    req.onerror = ()=> reject(req.error);
+  });
+  return _idbPromise;
+}
+
+async function kvGet(key){
+  try{
+    const db = await openDB();
+    return await new Promise((resolve)=>{
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const req = tx.objectStore(IDB_STORE).get(key);
+      req.onsuccess = ()=> resolve(req.result !== undefined ? req.result : null);
+      req.onerror = ()=> resolve(null);
+    });
+  }catch(e){ return null; }
+}
+async function kvSet(key, val){
+  try{
+    const db = await openDB();
+    await new Promise((resolve, reject)=>{
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).put(val, key);
+      tx.oncomplete = resolve; tx.onerror = ()=> reject(tx.error);
+    });
+  }catch(e){ console.error('save failed', e); }
+}
+async function kvDel(key){
+  try{
+    const db = await openDB();
+    await new Promise((resolve)=>{
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).delete(key);
+      tx.oncomplete = resolve; tx.onerror = resolve;
+    });
+  }catch(e){}
+}
+
+async function getIndex(){ return (await kvGet(INDEX_KEY)) || []; }
+async function saveIndex(list){ await kvSet(INDEX_KEY, list); }
+async function getWorld(id){ return await kvGet('wc_world_'+id); }
+async function saveWorld(w){ await kvSet('wc_world_'+w.id, w); }
+async function deleteWorldData(id){ await kvDel('wc_world_'+id); await kvDel('wc_chat_'+id); await kvDel('wc_mem_'+id); await kvDel('wc_panel_'+id); }
+async function getChat(id){ return (await kvGet('wc_chat_'+id)) || []; }
+async function saveChat(id, msgs){ await kvSet('wc_chat_'+id, msgs); }
+async function getMemory(id){ return (await kvGet('wc_mem_'+id)) || ''; }
+async function saveMemory(id, mem){ await kvSet('wc_mem_'+id, mem); }
+
+// ================= image handling =================
+function resizeImageToDataUrl(file, maxSize=640, quality=0.8){
+  return new Promise((resolve, reject)=>{
+    const img = new Image(); const reader = new FileReader();
+    reader.onload = e => { img.onload = ()=>{
+      let {width, height} = img;
+      if(width > height){ if(width > maxSize){ height *= maxSize/width; width = maxSize; } }
+      else { if(height > maxSize){ width *= maxSize/height; height = maxSize; } }
+      const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    }; img.onerror = reject; img.src = e.target.result; };
+    reader.onerror = reject; reader.readAsDataURL(file);
+  });
+}
+
+// ================= state / navigation =================
+let state = { editingId:null, chattingId:null, pendingCover:null, pendingBg:null };
+const els = {};
+// Elements that live directly in THIS document (index.html) and exist as soon as the
+// page parses — populated immediately, synchronously, below, so that top-level wiring
+// code later in this script (e.g. els.addDrawerOverlay.onclick = ...) has something
+// to attach to. Getting these mixed in with the fragment-only ids used to leave `els`
+// empty until loadChatroomFragment() finished, which threw on the first native-element
+// access and silently killed the rest of the script (including the lock keypad wiring).
+const NATIVE_ELS_IDS = ['library','libGrid','libEmpty','worldCount','editor','editorCloseBtn','editorTitle',
+ 'avatarPreview','fileInput','bgPreview','bgClearBtn','bgFileInput','fName','fLore','fOpening','editorLockNote','saveCardBtn','deleteCardBtn',
+ 'searchInput',
+ 'cardCtxMenu','cardCtxOverlay','cardCtxEdit','cardCtxDownload','cardCtxImport','cardCtxDelete','cardCtxImportFileInput',
+ 'addDrawerOverlay','addDrawer','addDrawerNewBtn','addDrawerImportBtn','addDrawerImportFileInput'];
+NATIVE_ELS_IDS.forEach(id => els[id] = document.getElementById(id));
+
+// Elements that live in index_myworld.html and don't exist in THIS document until that
+// fragment is fetched and injected — populated later, inside loadChatroomFragment()
+// itself (see below), once those nodes actually exist in the live DOM.
+const FRAGMENT_ELS_IDS = ['chatScreen','chatBody','chatBackBtn',
+ 'chatAvatar','chatName','chatBg','chatHeader','chatFooter','chatSettingsBtn','log','textInput','sendBtn','panelBtn',
+ 'memoryModal','memoryContent','closeMemoryBtn',
+ 'panelModal','panelContent','closePanelBtn','panelTabBar','catInfoModal','closeCatInfoBtn',
+ 'invModal','invContent','closeInvBtn','invWorldName',
+ 'relInfoModal','relInfoContent','relInfoName','closeRelInfoBtn',
+ 'chatSettingsModal','csMemoryBtn','csExportBtn','csImportIntoBtn','csImportIntoFileInput',
+ 'msgCtxMenu','msgCtxOverlay','msgCtxCopy','msgCtxDelete',
+ 'mediaDrawerOverlay','mediaDrawer','mediaFileInput','mediaPhotoBtn','mediaGifBtn','mediaVideoBtn'];
+
+// ================= chatroom fragment loader =================
+// index_myworld.html is not a standalone page — it's a fragment containing Section 4
+// (chatroom HTML: #chatScreen and its modals), Section 5 (chatroom CSS), and the
+// <script src> list for Section 6 (script_chatroom.js and its four Letter of Records
+// guard files). This fetches that fragment, moves its <style> into this page's <head>
+// and its HTML nodes into this page's <body>, then loads its scripts one at a time, in
+// the exact order they're listed in index_myworld.html — so script_chatroom.js (which
+// touches els.textInput/els.sendBtn/etc. at the top level, not inside a function) only
+// ever runs after those elements already exist and els is already populated.
+function loadScriptSequential(src){
+  return new Promise((resolve, reject)=>{
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = ()=> resolve();
+    s.onerror = ()=> reject(new Error('Failed to load ' + src));
+    document.body.appendChild(s);
+  });
+}
+async function loadChatroomFragment(){
+  const res = await fetch('index_myworld.html');
+  if(!res.ok) throw new Error('Failed to fetch index_myworld.html: ' + res.status);
+  const html = await res.text();
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+
+  // Move the chatroom's <style> block(s) into this document's <head>.
+  doc.querySelectorAll('style').forEach(styleEl=>{
+    document.head.appendChild(document.importNode(styleEl, true));
+  });
+
+  // Collect the chatroom's <script src> list before touching the DOM further, since
+  // once nodes are imported below, `doc` itself is left untouched anyway — but reading
+  // it up front keeps the two steps clearly separate.
+  const scriptSrcs = Array.from(doc.querySelectorAll('script[src]')).map(s => s.getAttribute('src'));
+
+  // Move every remaining non-script node (#chatScreen, #chatSettingsModal, #memoryModal,
+  // #panelModal, #invModal, #catInfoModal, #relInfoModal, #itemActionSheet, plus the
+  // equip/inventory file inputs) into this page's <body>, in their original order.
+  Array.from(doc.body.children).forEach(node=>{
+    if(node.tagName === 'SCRIPT') return;
+    document.body.appendChild(document.importNode(node, true));
+  });
+
+  // Now that #chatScreen and its modals exist in the live DOM, els.getElementById calls
+  // for every id in FRAGMENT_ELS_IDS will resolve correctly. (Native-document ids were
+  // already populated synchronously above, well before this function ever runs.)
+  FRAGMENT_ELS_IDS.forEach(id => els[id] = document.getElementById(id));
+  els.chatBackBtn.onclick = ()=>{ renderLibrary(); showLibrary(); };
+
+  // Load script_chatroom.js, then script_letter_of_records.js, then the four guard
+  // files — strictly one at a time, in the order index_myworld.html lists them, so
+  // each file's top-level code only runs once everything it depends on already has.
+  for(const src of scriptSrcs){
+    await loadScriptSequential(src);
+  }
+}
+
+function playScreenIn(el){ if(!el) return; el.classList.remove('screen-in'); void el.offsetWidth; el.classList.add('screen-in'); }
+function hideAllScreens(){
+  document.getElementById('homeScreen').style.display='none';
+  els.editor.style.display='none'; els.chatScreen.style.display='none';
+  document.getElementById('messagesScreen').style.display='none';
+  document.getElementById('settingsScreen').style.display='none';
+  document.getElementById('usageScreen').style.display='none';
+}
+function showLibrary(){ setActiveTab('library'); hideAllScreens(); document.getElementById('homeScreen').style.display='block';
+  document.getElementById('bottomNav').style.display='flex'; playScreenIn(document.getElementById('homeScreen')); }
+function showEditor(){ hideAllScreens();
+  els.editor.style.display='block';
+  document.getElementById('bottomNav').style.display='none';
+  els.editor.classList.remove('opening'); void els.editor.offsetWidth; els.editor.classList.add('opening'); }
+function showChat(){ hideAllScreens();
+  els.chatScreen.style.display='flex';
+  document.getElementById('bottomNav').style.display='none'; syncChatPadding(); syncChatBgViewport(); playScreenIn(els.chatScreen); }
+
+function showMessages(){ setActiveTab('messages'); hideAllScreens();
+  document.getElementById('messagesScreen').style.display='block';
+  document.getElementById('bottomNav').style.display='flex'; renderMessages(); playScreenIn(document.getElementById('messagesScreen')); }
+function showSettings(){ setActiveTab('settings'); hideAllScreens();
+  document.getElementById('settingsScreen').style.display='block';
+  document.getElementById('bottomNav').style.display='flex'; renderSettings(); playScreenIn(document.getElementById('settingsScreen')); }
+function showUsage(){ setActiveTab('usage'); hideAllScreens();
+  document.getElementById('usageScreen').style.display='block';
+  document.getElementById('bottomNav').style.display='flex'; renderUsage(); playScreenIn(document.getElementById('usageScreen')); }
+
+function setActiveTab(tab){
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+}
+document.querySelectorAll('.nav-item').forEach(btn=>{
+  btn.onclick = ()=>{
+    const tab = btn.dataset.tab;
+    if(tab==='library'){ renderLibrary(); showLibrary(); pushNavState('library'); }
+    else if(tab==='messages'){ showMessages(); pushNavState('messages'); }
+    else if(tab==='usage'){ showUsage(); pushNavState('usage'); }
+    else if(tab==='settings'){ showSettings(); pushNavState('settings'); }
+    else if(tab==='new'){ openAddDrawer(); }
+  };
+});
+
+function openAddDrawer(){
+  els.addDrawerOverlay.style.display = 'block';
+  els.addDrawer.classList.add('open');
+  pushNavState('modal');
+}
+function closeAddDrawer(){
+  els.addDrawerOverlay.style.display = 'none';
+  els.addDrawer.classList.remove('open');
+}
+els.addDrawerOverlay.onclick = closeAddDrawer;
+els.addDrawerNewBtn.onclick = ()=>{ closeAddDrawer(); openEditor(null); };
+els.addDrawerImportBtn.onclick = ()=>{ closeAddDrawer(); els.addDrawerImportFileInput.click(); };
+els.addDrawerImportFileInput.onchange = ()=>{
+  const file = els.addDrawerImportFileInput.files[0];
+  els.addDrawerImportFileInput.value = '';
+  if(file) importWorldFromFile(file);
+};
+
+async function renderMessages(){
+  const index = await getIndex();
+  const rows = [];
+  for(const w of index){
+    const chat = await getChat(w.id);
+    if(chat.length>0) rows.push({world:w, chat});
+  }
+  rows.sort((a,b)=> (b.chat[b.chat.length-1]?.ts||0) - (a.chat[a.chat.length-1]?.ts||0));
+  const list = document.getElementById('msgList');
+  list.innerHTML = '';
+  document.getElementById('msgEmpty').classList.toggle('screen-hidden', rows.length>0);
+  rows.forEach(({world, chat})=>{
+    const last = chat[chat.length-1];
+    const row = document.createElement('div'); row.className = 'conv-row';
+    row.innerHTML = `
+      ${world.cover ? `<img class="conv-avatar" src="${world.cover}">` : `<div class="conv-avatar placeholder">${world.name.charAt(0)}</div>`}
+      <div class="conv-info">
+        <div class="conv-name">${escapeHtml(world.name)}</div>
+        <div class="conv-preview">${escapeHtml((last.role==='user'?'You: ':'') + (last.text || (last.media ? (last.media.kind==='video' ? '📹 Video' : '📷 Photo') : '')))}</div>
+      </div>`;
+    row.onclick = ()=> openStory(world.id);
+    list.appendChild(row);
+  });
+}
+
+async function getGeminiKey(){ return (await kvGet('wc_gemini_key')) || ''; }
+async function saveGeminiKey(key){ await kvSet('wc_gemini_key', key); }
+async function getGeminiModel(){ return (await kvGet('wc_gemini_model')) || 'gemini-3.6-flash'; }
+async function saveGeminiModel(model){ await kvSet('wc_gemini_model', model); }
+// Background work (memory summaries + the letter of records) is ONLY ever allowed to run on
+// a Flash Lite model — never the full/non-lite models used for the main story. The settings
+// dropdown already only offers the two Lite options, but that alone doesn't protect against
+// a corrupted value, an old imported backup, or a direct edit to browser storage holding
+// something else. This whitelists the stored value against the exact allowed set and falls
+// back to the safe default rather than ever handing a non-lite model to a background call.
+const ALLOWED_BG_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'];
+const DEFAULT_BG_MODEL = 'gemini-3.5-flash-lite';
+async function getGeminiBgModel(){
+  const stored = await kvGet('wc_gemini_bg_model');
+  return ALLOWED_BG_MODELS.includes(stored) ? stored : DEFAULT_BG_MODEL;
+}
+async function saveGeminiBgModel(model){
+  // Refuse to persist anything outside the allowed set in the first place.
+  await kvSet('wc_gemini_bg_model', ALLOWED_BG_MODELS.includes(model) ? model : DEFAULT_BG_MODEL);
+}
+
+async function renderSettings(){
+  const key = await getGeminiKey();
+  const statusEl = document.getElementById('geminiKeyStatus');
+  document.getElementById('geminiKeyInput').value = key;
+  statusEl.textContent = key ? '✓ Key saved — stories will use Gemini.' : 'No key saved yet — stories won\'t work until you add one.';
+  document.getElementById('geminiModelSelect').value = await getGeminiModel();
+  document.getElementById('geminiBgModelSelect').value = await getGeminiBgModel();
+}
+document.getElementById('saveGeminiKeyBtn').onclick = async ()=>{
+  const val = document.getElementById('geminiKeyInput').value.trim();
+  await saveGeminiKey(val);
+  document.getElementById('geminiKeyStatus').textContent = val ? '✓ Key saved — stories will use Gemini.' : 'No key saved yet — stories won\'t work until you add one.';
+}
+document.getElementById('geminiModelSelect').onchange = async (e)=>{ await saveGeminiModel(e.target.value); };
+document.getElementById('geminiBgModelSelect').onchange = async (e)=>{ await saveGeminiBgModel(e.target.value); };
+document.getElementById('eraseAllBtn').onclick = async ()=>{
+  if(!confirm('Erase every world and conversation? This can\'t be undone.')) return;
+  const index = await getIndex();
+  for(const w of index) await deleteWorldData(w.id);
+  await saveIndex([]);
+  await renderLibrary(); showLibrary();
+};
+
+els.editorCloseBtn.onclick = ()=>{ renderLibrary(); showLibrary(); };
+// NOTE: els.chatBackBtn.onclick is wired inside loadChatroomFragment(), right after
+// FRAGMENT_ELS_IDS is populated — chatBackBtn lives in index_myworld.html and doesn't
+// exist in this document yet, so wiring it here (top-level, before the fragment loads)
+// used to throw and silently kill the rest of this script, including the lock keypad.
+
+function formatBytes(n){
+  if(!n && n !== 0) return '—';
+  if(n < 1024) return n + ' B';
+  if(n < 1024*1024) return (n/1024).toFixed(1) + ' KB';
+  if(n < 1024*1024*1024) return (n/(1024*1024)).toFixed(1) + ' MB';
+  return (n/(1024*1024*1024)).toFixed(2) + ' GB';
+}
+function formatTokens(n){
+  if(!n) return '0';
+  if(n < 1000) return String(n);
+  if(n < 1000000) return (n/1000).toFixed(1) + 'K';
+  return (n/1000000).toFixed(2) + 'M';
+}
+const MODEL_LABELS = {
+  'gemini-3.6-flash':'Gemini 3.6 Flash', 'gemini-3.5-flash':'Gemini 3.5 Flash',
+  'gemini-3.5-flash-lite':'Gemini 3.5 Flash Lite', 'gemini-3.1-flash-lite':'Gemini 3.1 Flash Lite'
+};
+// Google doesn't return live account quota from the API, and published free-tier numbers
+// shift over time / by account. These are reference daily limits from Google's current
+// published docs (Aug 2026) — shown as an estimate, not a real-time balance.
+const MODEL_DAILY_LIMIT = {
+  'gemini-3.6-flash': 1500,
+  'gemini-3.5-flash': 1500,
+  'gemini-3.5-flash-lite': 1500,
+  'gemini-3.1-flash-lite': 1500
+};
+async function renderUsage(){
+  const key = await getGeminiKey();
+  document.getElementById('usageNoKeyWarn').classList.toggle('screen-hidden', !!key);
+  const currentModel = await getGeminiModel();
+
+  const stats = (await kvGet('wc_usage_stats')) || { totalTokens:0, byDay:{}, byModel:{} };
+  const today = new Date().toISOString().slice(0,10);
+  const byModel = stats.byModel || {};
+
+  const grid = document.getElementById('usageModelGrid');
+  grid.innerHTML = '';
+  Object.keys(MODEL_LABELS).forEach(mId=>{
+    const entry = byModel[mId] || { requests:0, tokens:0, byDay:{} };
+    const usedToday = (entry.byDay && entry.byDay[today]) || 0;
+    const limit = MODEL_DAILY_LIMIT[mId];
+    const card = document.createElement('div');
+    card.className = 'usage-model-card' + (limit === null ? ' no-free' : '');
+    if(limit === null){
+      card.innerHTML = `
+        <div class="um-name">${MODEL_LABELS[mId]}</div>
+        <div class="um-stats"><div class="um-used">${entry.requests}</div><div class="um-of">requests all-time</div></div>
+        <div class="um-paid-note">No free-tier quota for this model — every request is billed.</div>
+        <div class="um-tokens">${formatTokens(entry.tokens)} tokens all-time</div>`;
+    } else {
+      const remaining = Math.max(0, limit - usedToday);
+      const pct = Math.min(100, (usedToday/limit)*100);
+      card.innerHTML = `
+        <div class="um-name">${MODEL_LABELS[mId]}</div>
+        <div class="um-stats"><div class="um-used">${usedToday}</div><div class="um-of">/ ~${limit} today</div></div>
+        <div class="usage-bar-track"><div class="usage-bar-fill" style="width:${pct.toFixed(1)}%;"></div></div>
+        <div class="um-remaining" style="margin-top:10px;">≈ <b>${remaining}</b> requests left today</div>
+        <div class="um-tokens">${formatTokens(entry.tokens)} tokens all-time</div>`;
+    }
+    grid.appendChild(card);
+  });
+
+  // Real on-device storage usage/quota for this origin (covers IndexedDB, incl. worlds, chats, images).
+  const storageUsedEl = document.getElementById('usageStorageUsed');
+  const storageQuotaEl = document.getElementById('usageStorageQuota');
+  const storageBarEl = document.getElementById('usageStorageBar');
+  if(navigator.storage && navigator.storage.estimate){
+    try{
+      const est = await navigator.storage.estimate();
+      storageUsedEl.textContent = formatBytes(est.usage);
+      storageQuotaEl.textContent = formatBytes(est.quota);
+      const pct = est.quota ? Math.min(100, (est.usage/est.quota)*100) : 0;
+      storageBarEl.style.width = pct.toFixed(1) + '%';
+    }catch(e){ storageUsedEl.textContent = 'Unavailable'; storageQuotaEl.textContent = '—'; }
+  } else {
+    storageUsedEl.textContent = 'Unsupported by this browser'; storageQuotaEl.textContent = '—';
+  }
+}
+document.getElementById('resetUsageStatsBtn').onclick = async ()=>{
+  await kvSet('wc_usage_stats', { totalRequests:0, totalTokens:0, totalPromptTokens:0, totalCompletionTokens:0, byDay:{}, byModel:{}, lastModel:'', lastAt:0 });
+  renderUsage();
+};
+
+
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+// ---------- library ----------
+async function renderLibrary(){
+  const index = await getIndex();
+  const q = els.searchInput.value.trim().toLowerCase();
+  const filtered = index.filter(w=>{
+    if(q && !w.name.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  els.libGrid.innerHTML = '';
+  els.libEmpty.classList.toggle('screen-hidden', index.length>0);
+  els.worldCount.textContent = index.length===1 ? '1 world' : `${index.length} worlds`;
+  for(const w of filtered){
+    const chat = await getChat(w.id);
+    const tile = document.createElement('div');
+    tile.className = 'world-card';
+    tile.innerHTML = `
+      <div class="cover-wrap ${w.cover?'':'placeholder'}">
+        ${w.cover ? `<img src="${w.cover}">` : (w.name||'?').charAt(0)}
+        <div class="cover-fade"></div>
+        <div class="msg-count"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg> ${chat.length}</div>
+      </div>
+      <div class="card-info">
+        <div class="card-name">${escapeHtml(w.name)}</div>
+      </div>`;
+    let cardLongPressFired = false;
+    tile.onclick = ()=>{ if(cardLongPressFired){ cardLongPressFired = false; return; } openStory(w.id); };
+    attachCardLongPress(tile, w, (fired)=>{ cardLongPressFired = fired; });
+    els.libGrid.appendChild(tile);
+  }
+}
+
+// ---------- library card long-press: edit / download / import / delete ----------
+let cardLongPressTimer = null;
+function attachCardLongPress(tile, world, setFired){
+  const start = (e)=>{
+    if(e.touches && e.touches.length > 1) return;
+    setFired(false);
+    cardLongPressTimer = setTimeout(()=>{ setFired(true); openCardCtxMenu(tile, world); }, 480);
+  };
+  const cancel = ()=> clearTimeout(cardLongPressTimer);
+  tile.addEventListener('touchstart', start, {passive:true});
+  tile.addEventListener('touchend', cancel);
+  tile.addEventListener('touchmove', cancel);
+  tile.addEventListener('touchcancel', cancel);
+  tile.addEventListener('mousedown', start);
+  tile.addEventListener('mouseup', cancel);
+  tile.addEventListener('mouseleave', cancel);
+}
+
+function openCardCtxMenu(tile, world){
+  const rect = tile.getBoundingClientRect();
+  const menu = els.cardCtxMenu;
+  els.cardCtxOverlay.style.display = 'block';
+  menu.style.visibility = 'hidden';
+  menu.style.display = 'flex';
+  const menuWidth = menu.offsetWidth || 168;
+  const menuHeight = menu.offsetHeight || 180;
+  const gap = 10;
+
+  let left = rect.left + rect.width/2 - menuWidth/2;
+  if(left < 10) left = 10;
+  if(left + menuWidth > window.innerWidth - 10) left = window.innerWidth - menuWidth - 10;
+
+  let top = rect.top + rect.height/2 - menuHeight/2;
+  if(top < 10) top = 10;
+  if(top + menuHeight > window.innerHeight - 10) top = window.innerHeight - menuHeight - 10;
+
+  menu.style.top = top + 'px';
+  menu.style.left = left + 'px';
+  menu.style.visibility = '';
+  menu.dataset.id = world.id;
+  requestAnimationFrame(()=>{
+    menu.classList.add('open');
+    els.cardCtxOverlay.classList.add('open');
+  });
+  pushNavState('modal');
+}
+
+let cardCtxCloseToken = 0;
+function closeCardCtxMenu(){
+  const menu = els.cardCtxMenu;
+  menu.classList.remove('open');
+  els.cardCtxOverlay.classList.remove('open');
+  const myToken = ++cardCtxCloseToken;
+  setTimeout(()=>{
+    if(myToken === cardCtxCloseToken){ menu.style.display = 'none'; els.cardCtxOverlay.style.display = 'none'; }
+  }, 280);
+}
+els.cardCtxOverlay.onclick = closeCardCtxMenu;
+
+els.cardCtxEdit.onclick = async ()=>{
+  const id = els.cardCtxMenu.dataset.id;
+  closeCardCtxMenu();
+  if(!id) return;
+  const world = await getWorld(id);
+  if(world) openEditor(world);
+};
+
+els.cardCtxDownload.onclick = ()=>{
+  const id = els.cardCtxMenu.dataset.id;
+  closeCardCtxMenu();
+  if(id) exportWorld(id);
+};
+
+els.cardCtxImport.onclick = ()=>{
+  closeCardCtxMenu();
+  els.cardCtxImportFileInput.click();
+};
+els.cardCtxImportFileInput.onchange = ()=>{
+  const file = els.cardCtxImportFileInput.files[0];
+  els.cardCtxImportFileInput.value = '';
+  if(file) importWorldFromFile(file);
+};
+
+els.cardCtxDelete.onclick = async ()=>{
+  const id = els.cardCtxMenu.dataset.id;
+  closeCardCtxMenu();
+  if(!id) return;
+  const world = await getWorld(id);
+  if(!confirm(`Delete "${world?.name || 'this world'}" and its whole story so far? This can't be undone.`)) return;
+  await deleteWorldData(id);
+  const index = (await getIndex()).filter(w=>w.id!==id);
+  await saveIndex(index);
+  await renderLibrary();
+};
+els.searchInput.addEventListener('input', ()=> renderLibrary());
+
+// ---------- editor ----------
+async function openEditor(worldOrNull){
+  state.editingId = worldOrNull ? worldOrNull.id : null;
+  state.pendingCover = worldOrNull ? worldOrNull.cover : null;
+  state.pendingBg = worldOrNull ? (worldOrNull.bg || null) : null;
+  els.editorTitle.textContent = worldOrNull ? 'Edit world' : 'New world';
+  els.fName.value = worldOrNull?.name || '';
+  els.fLore.value = worldOrNull?.lore || '';
+  els.fOpening.value = worldOrNull?.opening || '';
+  els.avatarPreview.innerHTML = state.pendingCover
+    ? `<img src="${state.pendingCover}" style="width:100%;height:100%;object-fit:cover;">`
+    : ((worldOrNull?.name||'葉').charAt(0));
+  els.bgPreview.style.backgroundImage = state.pendingBg ? `url(${state.pendingBg})` : 'none';
+  els.bgClearBtn.classList.toggle('screen-hidden', !state.pendingBg);
+  els.deleteCardBtn.classList.toggle('screen-hidden', !worldOrNull);
+
+  // Setting/characters and opening scene are editable at any time, including mid-story —
+  // by request, these are no longer locked once the story has begun. A save just updates
+  // what the AI reads as the world's current lore/opening from that point forward (every
+  // turn re-fetches the world fresh from storage — see continueStory/sendMessage), so an
+  // edit here naturally takes effect on the very next reply without touching anything
+  // already narrated. The note below is just an informational heads-up once a story has
+  // started, not a restriction.
+  const started = worldOrNull ? (await getChat(worldOrNull.id)).length > 0 : false;
+  els.fLore.readOnly = false;
+  els.fOpening.readOnly = false;
+  els.fLore.classList.remove('locked');
+  els.fOpening.classList.remove('locked');
+  els.editorLockNote.classList.toggle('screen-hidden', !started);
+
+  showEditor();
+  pushNavState('editor');
+}
+els.avatarPreview.onclick = ()=> els.fileInput.click();
+els.fileInput.onchange = async ()=>{
+  const file = els.fileInput.files[0]; if(!file) return;
+  const dataUrl = await resizeImageToDataUrl(file);
+  state.pendingCover = dataUrl;
+  els.avatarPreview.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;">`;
+};
+els.bgPreview.onclick = ()=> els.bgFileInput.click();
+els.bgFileInput.onchange = async ()=>{
+  const file = els.bgFileInput.files[0]; if(!file) return;
+  const dataUrl = await resizeImageToDataUrl(file, 900, 0.75);
+  state.pendingBg = dataUrl;
+  els.bgPreview.style.backgroundImage = `url(${dataUrl})`;
+  els.bgClearBtn.classList.remove('screen-hidden');
+};
+els.bgClearBtn.onclick = ()=>{
+  state.pendingBg = null;
+  els.bgPreview.style.backgroundImage = 'none';
+  els.bgFileInput.value = '';
+  els.bgClearBtn.classList.add('screen-hidden');
+};
+els.saveCardBtn.onclick = async ()=>{
+  const name = els.fName.value.trim();
+  if(!name){ els.fName.focus(); return; }
+  const isNewWorld = !state.editingId;
+  const id = state.editingId || ('w'+Date.now());
+  // Setting/characters and opening scene are always editable now (see openEditor above) —
+  // whatever is currently in the fields is what gets saved, whether or not the story has
+  // already begun. `hadStory` is only used below to decide whether the lore-seed pass (which
+  // assumes a fresh, storyless world) should run — it's no longer used to discard edits.
+  const existing = state.editingId ? await getWorld(state.editingId) : null;
+  const hadStory = state.editingId ? (await getChat(state.editingId)).length > 0 : false;
+  const world = {
+    id, name,
+    lore: els.fLore.value.trim(),
+    opening: els.fOpening.value.trim() || `Narrate the player's arrival in ${name}. Set the scene in second person, 3-4 sentences, then end on a moment the player can respond to.`,
+    cover: state.pendingCover || null,
+    bg: state.pendingBg || null,
+  };
+  els.saveCardBtn.disabled = true; els.saveCardBtn.textContent = 'Saving...';
+  await saveWorld(world);
+  const index = await getIndex();
+  const idx = index.findIndex(w=>w.id===id);
+  const entry = {id, name, cover:world.cover};
+  if(idx>-1) index[idx] = entry; else index.push(entry);
+  await saveIndex(index);
+  els.saveCardBtn.disabled = false; els.saveCardBtn.textContent = 'Save world';
+  // Pull any dated skills/abilities straight out of the setup text now. Only runs for a
+  // world that has no story yet — seedSkillsFromLore assumes a blank slate (no story log)
+  // and would otherwise re-seed/duplicate against a sheet that's already live mid-story.
+  if(!hadStory) queueWorldOp(id, async ()=>{ await seedSkillsFromLore(world); });
+  // Any "Day N — description" line the player wrote directly in the setup text gets seeded
+  // into Scheduled Events too — deterministic text-pattern matching only (see
+  // parseLoreScheduledEvents), not the AI inventing dates from vague prose. Only runs once,
+  // at the moment a brand-new world is first created — never re-run on a later edit, so
+  // re-saving the same world can't duplicate entries. Queued (not awaited) same as the skills
+  // seed above, and it manages its own single queueWorldOp round trip internally.
+  if(isNewWorld) seedScheduledEventsFromLore(world);
+  await openStory(id);
+};
+els.deleteCardBtn.onclick = async ()=>{
+  if(!confirm('Delete this world and its whole story so far? This can\'t be undone.')) return;
+  const id = state.editingId;
+  await deleteWorldData(id);
+  const index = (await getIndex()).filter(w=>w.id!==id);
+  await saveIndex(index);
+  await renderLibrary(); showLibrary();
+};
+
+// ---------- suppress native browser long-press context menu app-wide ----------
+document.addEventListener('contextmenu', (e)=>{
+  const t = e.target;
+  if(t.tagName === 'INPUT' || t.tagName === 'TEXTAREA') return; // still allow long-press in editable fields
+  e.preventDefault();
+});
+
+// ---------- guard against long-press menus firing/lingering during screenshot gestures ----------
+// Screenshot gestures (palm swipe, 3-finger swipe, edge-assistant swipe, browser's
+// screenshot/annotate tool) briefly touch the page and can be misread as a long-press,
+// and the OS overlay that appears mid-gesture blurs/hides the page. This cancels any
+// pending long-press timer and force-closes an already-open menu whenever that happens.
+function killPendingLongPresses(){
+  clearTimeout(msgLongPressTimer);
+  clearTimeout(cardLongPressTimer);
+  clearTimeout(sendLongPressTimer);
+  if(els.msgCtxMenu && els.msgCtxMenu.classList.contains('open')) closeMsgCtxMenu();
+  if(els.cardCtxMenu && els.cardCtxMenu.classList.contains('open')) closeCardCtxMenu();
+}
+document.addEventListener('visibilitychange', ()=>{ if(document.hidden) killPendingLongPresses(); });
+window.addEventListener('blur', killPendingLongPresses);
+window.addEventListener('pagehide', killPendingLongPresses);
+// Any second finger touching down means it's a multi-finger gesture (like a
+// screenshot swipe), not a genuine single-finger long-press — abort immediately.
+document.addEventListener('touchstart', (e)=>{ if(e.touches && e.touches.length > 1) killPendingLongPresses(); }, {passive:true});
+
+// ---------- smooth open/close for full-screen overlays (Letter of Records + Inventory) ----------
+// Both are plain display:none/flex toggles at heart (so every existing `.style.display ===
+// 'flex'` check elsewhere in the code still works exactly as before, including mid-transition),
+// but opening/closing now fades and slides the sheet via the `.is-open` CSS class instead of
+// snapping instantly — including when triggered by the hardware/browser back button, since that
+// goes through the same two functions as every other close path (X button, tap-outside).
+function showOverlayModal(modalEl){
+  modalEl.style.display = 'flex';
+  // Force layout so the browser registers the closed (opacity:0/translateY) state before the
+  // class flips — without this the two style changes get batched and there's nothing to
+  // transition FROM.
+  void modalEl.offsetWidth;
+  modalEl.classList.add('is-open');
+}
+function hideOverlayModal(modalEl){
+  if(modalEl.style.display !== 'flex') return;
+  modalEl.classList.remove('is-open');
+  let done = false;
+  const finish = ()=>{
+    if(done) return;
+    done = true;
+    modalEl.style.display = 'none';
+    modalEl.removeEventListener('transitionend', onEnd);
+  };
+  const onEnd = (e)=>{ if(e.target === modalEl) finish(); };
+  modalEl.addEventListener('transitionend', onEnd);
+  // Fallback in case transitionend never fires (reduced-motion, tab backgrounded, etc.) so the
+  // modal is never stuck holding its spot in the layout.
+  setTimeout(finish, 320);
+}
+
+
+// Every screen change or modal open pushes a history entry. Pressing back closes
+// the topmost modal/menu/drawer first, then steps back up to the library, instead
+// of exiting the app immediately.
+function pushNavState(name){
+  history.pushState({navApp:true, view:name}, '');
+}
+
+window.addEventListener('popstate', ()=>{
+  // 1) close topmost overlay/menu/drawer, if any is open
+  if(els.msgCtxMenu.classList.contains('open')){ closeMsgCtxMenu(); return; }
+  if(els.cardCtxMenu.classList.contains('open')){ closeCardCtxMenu(); return; }
+  if(els.mediaDrawer.classList.contains('open')){ closeMediaDrawer(); return; }
+  if(els.addDrawer.classList.contains('open')){ closeAddDrawer(); return; }
+  if(els.relInfoModal.style.display === 'flex'){ hideOverlayModal(els.relInfoModal); return; }
+  if(els.catInfoModal.style.display === 'flex'){ els.catInfoModal.style.display = 'none'; return; }
+  if(els.invModal.style.display === 'flex'){
+    hideOverlayModal(els.invModal); invPendingMerge = null;
+    // Same re-sync as the close button/tap-outside handlers — a back-button close must not
+    // leave the Letter of Records behind it showing pre-merge data.
+    if(els.panelModal.style.display === 'flex') paintPanel();
+    return;
+  }
+  if(els.panelModal.style.display === 'flex'){ hideOverlayModal(els.panelModal); return; }
+  if(els.memoryModal.style.display === 'flex'){ els.memoryModal.style.display = 'none'; return; }
+  if(els.chatSettingsModal.style.display === 'flex'){ els.chatSettingsModal.style.display = 'none'; return; }
+  // 2) step back up to the library from any full screen
+  if(els.chatScreen.style.display === 'flex'){ renderLibrary(); showLibrary(); return; }
+  if(els.editor.style.display === 'block'){ renderLibrary(); showLibrary(); return; }
+  if(document.getElementById('messagesScreen').style.display === 'block'){ renderLibrary(); showLibrary(); return; }
+  if(document.getElementById('settingsScreen').style.display === 'block'){ renderLibrary(); showLibrary(); return; }
+  if(document.getElementById('usageScreen').style.display === 'block'){ renderLibrary(); showLibrary(); return; }
+  // 3) already at the library root — let the back press exit the app as normal
+});
+
+// ---------- lock screen ----------
+// The PIN is never stored in plain text: only its SHA-256 hash is saved (in this
+// browser's IndexedDB, alongside your Gemini key), and only the hash of whatever
+// is typed is ever compared against it.
+// Note: this is a static file, so this check is visible to anyone who opens dev
+// tools — it deters casual visitors, not a determined attacker.
+//
+// There is no baked-in default PIN. On first run (no hash saved yet) the screen
+// walks the person through creating their own PIN instead of silently requiring
+// some hidden factory value nobody was ever told.
+const LOCK_STORAGE_KEY = 'wc_unlocked_v1';
+let lockPin = '';
+let lockAttempts = 0;
+let lockLockoutUntil = 0;
+// 'unlock' = normal entry against a saved hash
+// 'create' = first step of setting a new PIN (first run)
+// 'confirm' = re-enter the same PIN to confirm it before saving
+let lockMode = 'unlock';
+let lockPendingPin = '';
+const lockEls = {
+  screen: document.getElementById('lockScreen'),
+  title: document.getElementById('lockTitle'),
+  sub: document.getElementById('lockSub'),
+  dots: document.getElementById('lockDots'),
+  keypad: document.getElementById('lockKeypad'),
+  error: document.getElementById('lockError'),
+};
+
+// Pure-JS SHA-256 (no Web Crypto dependency). crypto.subtle only works in a
+// "secure context" (HTTPS or localhost) — on plain HTTP or a LAN IP it silently
+// doesn't exist, which would make the PIN check fail with zero feedback. This
+// implementation works identically everywhere the page is served from.
+function sha256Hex(str){
+  function rrot(x,n){ return (x>>>n)|(x<<(32-n)); }
+  const K = [
+    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
+  ];
+  let h0=0x6a09e667,h1=0xbb67ae85,h2=0x3c6ef372,h3=0xa54ff53a,h4=0x510e527f,h5=0x9b05688c,h6=0x1f83d9ab,h7=0x5be0cd19;
+  const bytes = new TextEncoder().encode(str);
+  const bitLen = bytes.length * 8;
+  const withOne = new Uint8Array(((bytes.length + 9 + 63) & ~63));
+  withOne.set(bytes);
+  withOne[bytes.length] = 0x80;
+  const dv = new DataView(withOne.buffer);
+  dv.setUint32(withOne.length - 4, bitLen >>> 0);
+  dv.setUint32(withOne.length - 8, Math.floor(bitLen / 4294967296));
+  const w = new Uint32Array(64);
+  for(let chunk = 0; chunk < withOne.length; chunk += 64){
+    for(let i = 0; i < 16; i++) w[i] = dv.getUint32(chunk + i*4);
+    for(let i = 16; i < 64; i++){
+      const s0 = rrot(w[i-15],7) ^ rrot(w[i-15],18) ^ (w[i-15]>>>3);
+      const s1 = rrot(w[i-2],17) ^ rrot(w[i-2],19) ^ (w[i-2]>>>10);
+      w[i] = (w[i-16] + s0 + w[i-7] + s1) | 0;
+    }
+    let a=h0,b=h1,c=h2,d=h3,e=h4,f=h5,g=h6,h=h7;
+    for(let i = 0; i < 64; i++){
+      const S1 = rrot(e,6) ^ rrot(e,11) ^ rrot(e,25);
+      const ch = (e & f) ^ (~e & g);
+      const temp1 = (h + S1 + ch + K[i] + w[i]) | 0;
+      const S0 = rrot(a,2) ^ rrot(a,13) ^ rrot(a,22);
+      const maj = (a & b) ^ (a & c) ^ (b & c);
+      const temp2 = (S0 + maj) | 0;
+      h=g; g=f; f=e; e=(d+temp1)|0; d=c; c=b; b=a; a=(temp1+temp2)|0;
+    }
+    h0=(h0+a)|0; h1=(h1+b)|0; h2=(h2+c)|0; h3=(h3+d)|0;
+    h4=(h4+e)|0; h5=(h5+f)|0; h6=(h6+g)|0; h7=(h7+h)|0;
+  }
+  return [h0,h1,h2,h3,h4,h5,h6,h7].map(n => (n>>>0).toString(16).padStart(8,'0')).join('');
+}
+
+async function getPinHash(){ return await kvGet('wc_pin_hash'); }
+async function savePinHash(hash){ await kvSet('wc_pin_hash', hash); }
+
+function updateLockDots(){
+  lockEls.dots.querySelectorAll('.lock-dot').forEach((d,i)=>{
+    d.classList.toggle('filled', i < lockPin.length);
+  });
+}
+
+function lockShakeAndClear(msg){
+  lockEls.dots.classList.add('shake');
+  lockEls.error.textContent = msg;
+  setTimeout(()=>{
+    lockEls.dots.classList.remove('shake');
+    lockPin = '';
+    updateLockDots();
+  }, 380);
+}
+
+async function tryUnlock(){
+  try{
+    const [enteredHash, storedHash] = await Promise.all([sha256Hex(lockPin), getPinHash()]);
+    if(enteredHash === storedHash){
+      lockEls.screen.classList.add('hidden');
+      bootApp();
+      return;
+    }
+    lockAttempts++;
+    if(lockAttempts >= 5){
+      const lockoutSec = 30;
+      lockLockoutUntil = Date.now() + lockoutSec * 1000;
+      lockEls.keypad.style.pointerEvents = 'none';
+      lockShakeAndClear(`Too many attempts — try again in ${lockoutSec}s`);
+      setTimeout(()=>{
+        lockEls.keypad.style.pointerEvents = '';
+        lockEls.error.textContent = '';
+        lockAttempts = 0;
+      }, lockoutSec * 1000);
+    } else {
+      lockShakeAndClear('Incorrect PIN');
+    }
+  }catch(err){
+    console.error('[lock] unlock check failed', err);
+    lockShakeAndClear('Something went wrong — try again');
+  }
+}
+
+// ---------- PIN creation flow (first run) ----------
+function enterCreateMode(isFirstRun){
+  lockMode = 'create';
+  lockPendingPin = '';
+  lockPin = '';
+  lockAttempts = 0;
+  lockLockoutUntil = 0;
+  lockEls.keypad.style.pointerEvents = '';
+  lockEls.title.textContent = 'Worlds';
+  lockEls.sub.textContent = isFirstRun ? 'Choose a 6-digit PIN to protect your worlds' : 'Choose a new 6-digit PIN';
+  lockEls.error.textContent = '';
+  updateLockDots();
+}
+function enterConfirmMode(){
+  lockMode = 'confirm';
+  lockPin = '';
+  lockEls.sub.textContent = 'Enter it again to confirm';
+  lockEls.error.textContent = '';
+  updateLockDots();
+}
+function enterUnlockMode(){
+  lockMode = 'unlock';
+  lockPin = '';
+  lockPendingPin = '';
+  lockEls.sub.textContent = 'Enter PIN to continue';
+  lockEls.error.textContent = '';
+  updateLockDots();
+}
+async function handlePinComplete(){
+  if(lockMode === 'unlock'){
+    tryUnlock();
+  } else if(lockMode === 'create'){
+    lockPendingPin = lockPin;
+    enterConfirmMode();
+  } else if(lockMode === 'confirm'){
+    if(lockPin === lockPendingPin){
+      try{
+        const hash = await sha256Hex(lockPin);
+        await savePinHash(hash);
+        lockEls.screen.classList.add('hidden');
+        bootApp();
+      }catch(err){
+        console.error('[lock] pin creation failed', err);
+        lockShakeAndClear('Something went wrong — try again');
+        enterCreateMode(false);
+      }
+    }else{
+      lockShakeAndClear("PINs didn't match — try again");
+      setTimeout(()=> enterCreateMode(false), 400);
+    }
+  }
+}
+
+lockEls.keypad.addEventListener('click', (e)=>{
+  if(Date.now() < lockLockoutUntil) return;
+  const btn = e.target.closest('.lock-key');
+  if(!btn || !btn.dataset.k) return;
+  lockEls.error.textContent = '';
+  if(btn.dataset.k === 'back'){ lockPin = lockPin.slice(0, -1); updateLockDots(); return; }
+  if(lockPin.length >= 6) return;
+  lockPin += btn.dataset.k;
+  updateLockDots();
+  if(lockPin.length === 6) handlePinComplete();
+});
+
+document.addEventListener('keydown', (e)=>{
+  if(lockEls.screen.classList.contains('hidden') || Date.now() < lockLockoutUntil) return;
+  if(e.key >= '0' && e.key <= '9'){
+    if(lockPin.length < 6){ lockPin += e.key; updateLockDots(); if(lockPin.length === 6) handlePinComplete(); }
+  } else if(e.key === 'Backspace'){
+    lockPin = lockPin.slice(0, -1); updateLockDots();
+  }
+});
+
+// ---------- change PIN (Settings) ----------
+document.getElementById('savePinBtn').onclick = async ()=>{
+  const statusEl = document.getElementById('pinChangeStatus');
+  const currentEl = document.getElementById('currentPinInput');
+  const newEl = document.getElementById('newPinInput');
+  const confirmEl = document.getElementById('confirmPinInput');
+  const current = currentEl.value.trim();
+  const next = newEl.value.trim();
+  const confirm = confirmEl.value.trim();
+
+  const isSixDigits = v => /^\d{6}$/.test(v);
+  if(!isSixDigits(current)){ statusEl.textContent = 'Enter your current 6-digit PIN.'; return; }
+  if(!isSixDigits(next)){ statusEl.textContent = 'New PIN must be exactly 6 digits.'; return; }
+  if(next !== confirm){ statusEl.textContent = "New PIN and confirmation don't match."; return; }
+
+  try{
+    const [currentHash, storedHash] = await Promise.all([sha256Hex(current), getPinHash()]);
+    if(currentHash !== storedHash){ statusEl.textContent = 'Current PIN is incorrect.'; return; }
+
+    const newHash = await sha256Hex(next);
+    await savePinHash(newHash);
+    currentEl.value = ''; newEl.value = ''; confirmEl.value = '';
+    statusEl.textContent = '✓ PIN updated.';
+  }catch(err){
+    console.error('[lock] pin change failed', err);
+    statusEl.textContent = 'Something went wrong — please try again.';
+  }
+};
+
+function bootApp(){
+  history.replaceState({navApp:true, view:'library'}, '');
+  (async ()=>{ await renderLibrary(); showLibrary(); setActiveTab('library'); })();
+}
+
+// ---------- boot ----------
+// Every load re-checks against the stored PIN hash — there is no "stay unlocked"
+// bypass, so the PIN screen always triggers before the site opens. The chatroom
+// fragment (index_myworld.html's HTML/CSS + its six scripts) is fetched and injected
+// first — before the PIN check, before showLibrary(), before anything else — so that
+// by the time the person can interact with the app at all, #chatScreen and every
+// modal it needs already exist in the DOM, els is fully populated, and script_chatroom.js
+// plus its four guard files have already loaded and finished their top-level setup.
+(async ()=>{
+  try{
+    await loadChatroomFragment();
+  }catch(err){
+    console.error('[chatroom] failed to load index_myworld.html', err);
+    // If the chatroom fragment can't be fetched (e.g. the file is missing, or the
+    // page was opened directly from disk via file:// where fetch() of a sibling file
+    // is blocked by the browser), the library/settings/lock screen still work, but
+    // opening a world would hit null els.* elements. Surface this clearly instead of
+    // failing silently deep inside some later click handler.
+    alert('Could not load the chat screen (index_myworld.html). Make sure this page is served over http(s) — not opened directly as a file — and that index_myworld.html and its script_*.js files sit in the same folder as this page.');
+  }
+  // Clean up a legacy flag from an earlier version of this file that used to skip
+  // the lock screen entirely once set. Removing it here guarantees any old value
+  // still sitting in this browser's storage can never suppress the PIN prompt again.
+  try{ localStorage.removeItem(LOCK_STORAGE_KEY); }catch(e){}
+  try{
+    const existingHash = await getPinHash();
+    if(existingHash){ enterUnlockMode(); }
+    else { enterCreateMode(true); }
+  }catch(err){
+    console.error('[lock] boot check failed', err);
+    // If IndexedDB itself is unreachable, fall back to letting the person set a
+    // fresh PIN rather than leaving them stuck on a screen that can never unlock.
+    enterCreateMode(true);
+  }
+})();
+
+
+// ================= AI =================
+function withTimeout(promise, ms, msg){ return Promise.race([promise, new Promise((_,rej)=>setTimeout(()=>rej(new Error(msg)), ms))]); }
+
+async function askAI(systemPrompt, userPrompt, modelOverride){
+  const key = await getGeminiKey();
+  if(!key) throw new Error('No Gemini API key set. Go to Settings and paste a free key from aistudio.google.com/apikey.');
+  const model = modelOverride || await getGeminiModel();
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
+  const body = {
+    contents: [{ role:'user', parts:[{ text:userPrompt }] }],
+    systemInstruction: { parts:[{ text:systemPrompt }] }
+  };
+  let response;
+  try{
+    response = await withTimeout(
+      fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) }),
+      45000, 'That took too long and timed out. Check your connection and try again.'
+    );
+  }catch(err){ throw err; }
+  if(!response.ok){
+    let msg = `Gemini request failed (${response.status}).`;
+    try{ const errJson = await response.json(); if(errJson?.error?.message) msg = errJson.error.message; }catch(e){}
+    if(response.status === 400 || response.status === 403) msg = 'Your Gemini API key looks invalid. Check it in Settings.';
+    if(response.status === 429) msg = 'Gemini\'s free rate limit was hit — wait a bit and try again.';
+    throw new Error(msg);
+  }
+  const data = await response.json();
+  const text = data?.candidates?.[0]?.content?.parts?.map(p=>p.text).join('') ?? null;
+  if(!text) throw new Error('No reply came back. Try again.');
+  recordUsage(model, data?.usageMetadata);
+  return text.trim();
+}
+
+// Tracks a running, on-device count of Gemini requests/tokens for the Usage screen.
+// Queued so rapid parallel calls (story reply + background memory/panel updates) never
+// clobber each other's read-modify-write, the same issue fixed for panel updates.
+let _usageQueue = Promise.resolve();
+function recordUsage(model, usageMetadata){
+  _usageQueue = _usageQueue.then(async ()=>{
+    try{
+      const stats = (await kvGet('wc_usage_stats')) || { totalRequests:0, totalTokens:0, totalPromptTokens:0, totalCompletionTokens:0, byDay:{}, byModel:{}, lastModel:'', lastAt:0 };
+      const today = new Date().toISOString().slice(0,10);
+      stats.totalRequests = (stats.totalRequests||0) + 1;
+      stats.byDay = stats.byDay || {};
+      stats.byDay[today] = (stats.byDay[today]||0) + 1;
+      // keep only the last 14 days of daily buckets so this never grows unbounded
+      const keys = Object.keys(stats.byDay).sort();
+      while(keys.length > 14){ delete stats.byDay[keys.shift()]; }
+      stats.byModel = stats.byModel || {};
+      const mEntry = stats.byModel[model] || { requests:0, tokens:0, byDay:{} };
+      mEntry.requests += 1;
+      mEntry.byDay = mEntry.byDay || {};
+      mEntry.byDay[today] = (mEntry.byDay[today]||0) + 1;
+      const mKeys = Object.keys(mEntry.byDay).sort();
+      while(mKeys.length > 14){ delete mEntry.byDay[mKeys.shift()]; }
+      if(usageMetadata){
+        stats.totalPromptTokens = (stats.totalPromptTokens||0) + (usageMetadata.promptTokenCount||0);
+        stats.totalCompletionTokens = (stats.totalCompletionTokens||0) + (usageMetadata.candidatesTokenCount||0);
+        const tk = usageMetadata.totalTokenCount || ((usageMetadata.promptTokenCount||0)+(usageMetadata.candidatesTokenCount||0));
+        stats.totalTokens = (stats.totalTokens||0) + tk;
+        mEntry.tokens += tk;
+      }
+      stats.byModel[model] = mEntry;
+      stats.lastModel = model;
+      stats.lastAt = Date.now();
+      await kvSet('wc_usage_stats', stats);
+    }catch(e){ console.error('[usage tracking failed]', e); }
+  });
+  return _usageQueue;
+}
+
+// Retries a lite-model call once on failure (network blip, rate limit, empty reply) before
+// giving up, since memory/panel updates run silently in the background with no user-visible
+// way to retry them manually — losing an update this way would quietly erode the story's record.
+async function askAIWithRetry(systemPrompt, userPrompt, model, retries=1){
+  try{
+    return await askAI(systemPrompt, userPrompt, model);
+  }catch(e){
+    if(retries <= 0) throw e;
+    await new Promise(r=>setTimeout(r, 1200));
+    return askAIWithRetry(systemPrompt, userPrompt, model, retries-1);
+  }
+}
+
+// The model is instructed to output raw JSON only, but strips fences defensively and, if any
+// stray preamble/trailing text still slips in, falls back to extracting the first {...} block
+// rather than dropping the whole update.
+// Finds the '}' that actually matches the first '{' (depth-counted, string-aware) instead of
+// just grabbing the last '}' in the reply — a trailing stray brace after the real object used
+// to break this.
+function findMatchingBraceEnd(str, start){
+  let depth = 0, inString = false, escaped = false;
+  for(let i = start; i < str.length; i++){
+    const ch = str[i];
+    if(inString){
+      if(escaped){ escaped = false; }
+      else if(ch === '\\'){ escaped = true; }
+      else if(ch === '"'){ inString = false; }
+      continue;
+    }
+    if(ch === '"'){ inString = true; continue; }
+    if(ch === '{'){ depth++; }
+    else if(ch === '}'){ depth--; if(depth === 0) return i; }
+  }
+  return -1; // no matching close found — malformed/truncated
+}
+function extractJsonObject(raw){
+  const cleaned = raw.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+  try{ return JSON.parse(cleaned); }catch(e){}
+  const start = cleaned.indexOf('{');
+  if(start !== -1){
+    const end = findMatchingBraceEnd(cleaned, start);
+    if(end !== -1) return JSON.parse(cleaned.slice(start, end+1));
+  }
+  throw new Error('No valid JSON found in response');
+}
+
+// Same defensive fence-stripping/brace-hunting as extractJsonObject above, but for a top-level
+// JSON ARRAY response (used by readClaimsFromInput below, which always returns a list of
+// claims — possibly empty — never a single object).
+function extractJsonArray(raw){
+  const cleaned = raw.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+  try{ const p = JSON.parse(cleaned); if(Array.isArray(p)) return p; }catch(e){}
+  const start = cleaned.indexOf('['); const end = cleaned.lastIndexOf(']');
+  if(start !== -1 && end !== -1 && end > start){
+    const p = JSON.parse(cleaned.slice(start, end+1));
+    if(Array.isArray(p)) return p;
+  }
+  throw new Error('No valid JSON array found in response');
+}
+
+// Single shared formatter for turning a chat message into a log line for AI prompts, used
+// everywhere (story continuation, system chat, memory, panel, resync) so labeling stays
+// consistent and media-only messages (no caption) never produce a blank, contextless line.
+function messageToLogLine(m){
+  const speaker = m.role==='user' ? 'Player' : (m.role==='system' ? 'System' : 'Story');
+  let text = m.text || '';
+  if(m.media){
+    const tag = m.media.kind==='video' ? '[shared a video]' : '[shared an image]';
+    text = text ? `${text} ${tag}` : tag;
+  }
+  return `${speaker}: ${text}`;
+}
+
+const worldOpQueue = {};
+// Tracks how many background world-ops (memory/panel updates, resyncs) are currently in
+// flight. These are fired without being awaited by the caller (so replies stay snappy), which
+// means a page refresh/close mid-update loses that update's result silently — the story's
+// letter of records or memory just quietly doesn't get the correction it was about to save.
+// Warn before unload while any are pending so that data loss requires the person to
+// deliberately confirm it, instead of it happening invisibly.
+let pendingBgOps = 0;
+window.addEventListener('beforeunload', (e)=>{
+  if(pendingBgOps > 0){ e.preventDefault(); e.returnValue = ''; return ''; }
+});
+function queueWorldOp(worldId, fn){
+  pendingBgOps++;
+  const prev = worldOpQueue[worldId] || Promise.resolve();
+  const next = prev.then(fn, fn).catch(e=>console.error('[world op failed]', e)).finally(()=>{ pendingBgOps--; });
+  worldOpQueue[worldId] = next;
+  return next;
+}
+
+// Shared by updatePanel() and resyncMemoryAndPanel() so both stay in sync with the same rules.
+// Written to be genre-neutral on purpose — this app is used for many different kinds of
+// stories (fantasy, sci-fi, slice-of-life, romance, etc.), not just one setting, so the
+// categories/examples below are illustrative patterns, not a fixed schema to imitate.
+
+
+
+
+</script>
+<!-- Sections 4-6 (the chatroom itself) live in chatroom.html -->
+</body>
+</html>
